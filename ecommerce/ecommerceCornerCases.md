@@ -24,7 +24,7 @@ Corner cases:
   wrong warehouse.
 - Return-to-inventory timing. Customer returns an item. Warehouse receives it, but the inventory system update is delayed (async event). During the delay, the item shows as
   out-of-stock. Lost sales for an item that's physically on the shelf.
-- Pre-order / backorder inventory. You sell 500 units of a pre-order item with an expected restock date. Supplier delivers only 300. Now you have 200 confirmed orders you can't
+- [low]Pre-order / backorder inventory. You sell 500 units of a pre-order item with an expected restock date. Supplier delivers only 300. Now you have 200 confirmed orders you can't
   fulfill. Which 200 do you cancel? FIFO? Loyalty tier? This is a business logic problem with distributed data dependencies.
 - Bundle inventory. A bundle contains items A, B, C. Item A has 2 left, B has 100, C has 50. The bundle is limited to 2 — but nothing prevents someone from buying item A
   individually while a bundle order is in flight. A is now at 0 and the bundle can't be fulfilled.
@@ -42,7 +42,7 @@ Corner cases:
 
 - Double charge on timeout. Payment gateway takes 30 seconds (network issue). Client times out at 10 seconds and retries. Gateway processed the first request. Now two charges
   exist.
-    - Mitigation: Idempotency key per checkout attempt. Gateway deduplicates by key. But: the idempotency key must be generated client-side before the first attempt, not server-side
+    - Mitigation: Idempotency key per checkout attempt. **Gateway deduplicates by key.** But: the idempotency key must be generated client-side before the first attempt, not server-side
       — otherwise the retry generates a new key.
 - Payment succeeds, order creation fails. Stripe returns charge.succeeded. Your order service crashes before persisting the order. Customer is charged, no order exists.
     - Mitigation: Two approaches:
@@ -235,8 +235,8 @@ Corner cases:
   load. The other 364 partitions are idle.
 - CDN cache invalidation propagation. You update a product image. CDN has it cached at 200 edge locations worldwide. Invalidation takes 5-30 seconds to propagate. During that
   window, some users see the old image, some the new. For time-sensitive changes (legal takedown, incorrect pricing), this window is a liability.
-- Rate limiting per tenant in a marketplace. Seller A uses the API responsibly (10 req/s). Seller B scripts 10,000 req/s to scrape competitor pricing. Global rate limiting punishes
-  A along with B. Per-seller rate limiting requires tracking state for millions of sellers — itself a scalability problem.
+- Rate limiting per tenant in a marketplace. Seller A uses the API responsibly (10 req/s). Seller B scripts 10,000 req/s to scrape competitor pricing. 
+  Global rate limiting punishes A along with B. Per-seller rate limiting requires tracking state for millions of sellers — itself a scalability problem.
 - Event bus backpressure. Order events → inventory service, shipping service, notification service, analytics service, tax service. Each consumer processes at different speeds. The
   slowest consumer (analytics, doing heavy aggregation) falls behind. If using Kafka, the consumer lag grows. If using a push-based system (SNS+SQS), the SQS queue grows
   unboundedly. Either way, the slow consumer becomes a ticking time bomb — if it crashes and needs to replay, the replay takes hours.
@@ -275,7 +275,7 @@ Corner cases:
 - Coupon brute forcing. Coupons are 8-character alphanumeric codes. An attacker scripts POST /apply-coupon with random codes at 1,000 req/s. At 36^8 = ~2.8 trillion possibilities
   it's infeasible — unless your codes are sequential (PROMO001, PROMO002...) or short (6 chars = 2.1B).
 - Price manipulation via API. Customer intercepts the checkout API call, changes the price from $100 to $1. If the server trusts the client-sent price instead of looking it up from
-  the catalog, the order is processed at $1. Server must always recompute the price from canonical sources.
+  the catalog, the order is processed at $1. **Server must always recompute the price from canonical sources.**
 - Inventory denial-of-service. Bot adds all inventory of a hot item to carts, never checks out. Legitimate customers see "out of stock." Cart reservation timeout is 15 minutes. Bot
   re-adds every 14 minutes. Inventory is effectively locked out from real customers indefinitely.
 - Enumeration attacks. /api/orders/12345 returns order details. An attacker iterates 12345, 12346, 12347... and scrapes all orders. Even with authentication, if the authorization

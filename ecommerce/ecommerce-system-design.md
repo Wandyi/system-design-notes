@@ -165,16 +165,16 @@ Every region is a complete, self-sufficient deployment. If all other regions van
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  REGION: US-EAST                                                         │                                                                                                        
 │                                                                          │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │  EDGE TIER                                                        │   │                                                                                                        
+│  ┌──────────────────────────────────────────────────────────────────┐     │
+│  │  EDGE TIER                                                         │   │                                                                                                        
 │  │                                                                    │   │
-│  │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐         │   │                                                                                                          
-│  │  │  NLB / GLB   │   │  WAF         │   │  DDoS        │         │   │
-│  │  │  (L4 load    │   │  (SQL inj,   │   │  Protection  │         │   │                                                                                                          
-│  │  │   balancer)  │   │   XSS, bot   │   │  (rate limit │         │   │                                                                                                          
-│  │  │              │   │   detection)  │   │   per IP)    │         │   │                                                                                                         
-│  │  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘         │   │                                                                                                          
-│  │         └──────────────────┼──────────────────┘                   │   │                                                                                                        
+│  │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐            │   │                                                                                                          
+│  │  │  NLB / GLB   │   │  WAF         │   │  DDoS        │            │   │
+│  │  │  (L4 load    │   │  (SQL inj,   │   │  Protection  │            │   │                                                                                                          
+│  │  │   balancer)  │   │   XSS, bot   │   │  (rate limit │            │   │                                                                                                          
+│  │  │              │   │   detection) │   │   per IP)    │            │   │                                                                                                         
+│  │  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘            │   │                                                                                                          
+│  │         └──────────────────┼──────────────────┘                    │   │                                                                                                        
 │  │                            ▼                                       │   │                                                                                                       
 │  │                   ┌──────────────────┐                             │   │                                                                                                       
 │  │                   │   API GATEWAY    │                             │   │
@@ -205,23 +205,23 @@ Every region is a complete, self-sufficient deployment. If all other regions van
 │  │  │ • Own caches │  │ • Own caches │  │ • Own caches │           │   │                                                                                                          
 │  │  │ • Own queues │  │ • Own queues │  │ • Own queues │           │   │                                                                                                          
 │  │  └──────────────┘  └──────────────┘  └──────────────┘           │   │                                                                                                          
-│  │                                                                    │   │                                                                                                       
-│  │  Cell routing: API Gateway hashes customer_id → cell              │   │
-│  │  Cell count: 20-50 per region                                      │   │                                                                                                       
-│  │  Cell size: ~2-5% of regional traffic each                        │   │                                                                                                        
-│  │  Blast radius: cell failure affects ≤5% of customers              │   │                                                                                                        
-│  └────────────────────────────────────────────────────────────────────┘   │                                                                                                       
+│  │                                                                 │   │                                                                                                       
+│  │  Cell routing: API Gateway hashes customer_id → cell            │   │
+│  │  Cell count: 20-50 per region                                   │   │                                                                                                       
+│  │  Cell size: ~2-5% of regional traffic each                      │   │                                                                                                        
+│  │  Blast radius: cell failure affects ≤5% of customers                │                                                                                                        
+│  └───────────────────────────────────────────────────────────────────┘   │                                                                                                       
 │                                                                          │                                                                                                        
-│  ┌────────────────────────────────────────────────────────────────────┐   │                                                                                                       
-│  │  SHARED TIER (region-wide, not per-cell)                           │   │                                                                                                       
-│  │                                                                    │   │                                                                                                       
+│  ┌───────────────────────────────────────────────────────────────────┐   │                                                                                                       
+│  │  SHARED TIER (region-wide, not per-cell)                          │   │                                                                                                       
+│  │                                                                   │   │                                                                                                       
 │  │  • Product Catalog (read replicas — same data for all customers)  │   │
 │  │  • Search Cluster (Elasticsearch / OpenSearch)                    │   │                                                                                                        
 │  │  • Recommendation Engine (ML inference)                           │   │
 │  │  • Image / Asset Storage (S3)                                     │   │                                                                                                        
 │  │  • Event Bus (Kafka — regional cluster)                           │   │                                                                                                        
 │  │  • Observability Stack (metrics, logs, traces)                    │   │                                                                                                        
-│  └────────────────────────────────────────────────────────────────────┘   │                                                                                                       
+│  └───────────────────────────────────────────────────────────────────┘   │                                                                                                       
 │                                                                          │                                                                                                        
 └──────────────────────────────────────────────────────────────────────────┘
 
@@ -404,12 +404,12 @@ Q&A                NO          Hide section
 ┌───────────────────────────────────────────────────────────────────┐
 │  SEARCH & DISCOVERY                                                │                                                                                                              
 │                                                                    │
-│  ┌────────────────────────────────────────────────────────────┐   │                                                                                                               
+│  ┌────────────────────────────────────────────────────────────┐    │                                                                                                               
 │  │  Indexing Pipeline (offline / near-real-time)               │   │                                                                                                              
 │  │                                                             │   │                                                                                                              
-│  │  Kafka: "catalog.changes" ──▶ Index Builder ──▶ OpenSearch │   │                                                                                                               
+│  │  Kafka: "catalog.changes" ──▶ Index Builder ──▶ OpenSearch  │   │                                                                                                               
 │  │                                    │                        │   │                                                                                                              
-│  │                              ┌─────┴──────┐                │   │
+│  │                              ┌─────┴──────┐                 │   │
 │  │                              │ Enrichment  │                │   │                                                                                                              
 │  │                              │             │                │   │
 │  │                              │ • Synonyms  │                │   │                                                                                                              
@@ -422,23 +422,23 @@ Q&A                NO          Hide section
 │  │                              │   quality   │                │   │                                                                                                              
 │  │                              └─────────────┘                │   │
 │  │                                                             │   │                                                                                                              
-│  │  Latency: catalog write → searchable = 5-30 seconds        │   │
-│  └────────────────────────────────────────────────────────────┘   │                                                                                                               
+│  │  Latency: catalog write → searchable = 5-30 seconds        │    │
+│  └────────────────────────────────────────────────────────────┘    │                                                                                                               
 │                                                                    │
-│  ┌────────────────────────────────────────────────────────────┐   │                                                                                                               
+│  ┌────────────────────────────────────────────────────────────┐    │                                                                                                               
 │  │  Query Pipeline (real-time, in the request path)            │   │                                                                                                              
 │  │                                                             │   │                                                                                                              
 │  │  User query: "blue running shoes size 10"                   │   │                                                                                                              
 │  │       │                                                     │   │                                                                                                              
 │  │       ▼                                                     │   │
-│  │  ┌──────────┐   ┌──────────┐   ┌──────────┐               │   │                                                                                                                
-│  │  │  Query   │──▶│  Query   │──▶│OpenSearch │               │   │                                                                                                               
-│  │  │  Parser  │   │  Rewriter│   │  Cluster  │               │   │                                                                                                               
-│  │  │          │   │          │   │           │               │   │                                                                                                               
-│  │  │ tokenize │   │ spell    │   │ 100+     │               │   │                                                                                                                
-│  │  │ intent   │   │ correct  │   │ data     │               │   │                                                                                                                
+│  │  ┌──────────┐   ┌──────────┐   ┌──────────┐                │    │                                                                                                                
+│  │  │  Query   │──▶│  Query   │──▶│OpenSearch │               │    │                                                                                                               
+│  │  │  Parser  │   │  Rewriter│   │  Cluster  │               │    │                                                                                                               
+│  │  │          │   │          │   │           │               │    │                                                                                                               
+│  │  │ tokenize │   │ spell    │   │ 100+     │               │     │                                                                                                                
+│  │  │ intent   │   │ correct  │   │ data     │               │     │                                                                                                                
 │  │  │ detect   │   │ expand   │   │ nodes    │               │   │
-│  │  │ (filter  │   │ synonyms │   │           │               │   │                                                                                                               
+│  │  │ (filter  │   │ synonyms │   │          │               │   │                                                                                                               
 │  │  │  vs.     │   │ personlz │   │ 500M docs│               │   │                                                                                                                
 │  │  │  freetext│   │          │   │ ~2 TB    │               │   │                                                                                                                
 │  │  │  )       │   │          │   │ sharded  │               │   │                                                                                                                
@@ -503,7 +503,7 @@ Q&A                NO          Hide section
 │      Conditional write: version = expected_version                 │
 │      On conflict: read-merge-write retry (3 attempts)              │                                                                                                              
 │                                                                    │                                                                                                              
-│    get_cart(cart_id):                                               │                                                                                                             
+│    get_cart(cart_id):                                              │                                                                                                             
 │      Single read from DynamoDB (< 5ms)                             │                                                                                                              
 │      Enrich with live prices (batch call to pricing service)       │
 │                                                                    │                                                                                                              
@@ -521,7 +521,7 @@ Q&A                NO          Hide section
 │                                                                    │                                                                                                              
 │  Why NOT Redis:                                                    │                                                                                                              
 │    • Redis is faster (sub-ms) but durability requires AOF + repl   │                                                                                                              
-│    • A Redis node failure + replication lag = lost carts            │                                                                                                             
+│    • A Redis node failure + replication lag = lost carts           │                                                                                                             
 │    • DynamoDB is durable by default (3-AZ replication)             │                                                                                                              
 │    • Use Redis as a CACHE in front of DynamoDB for hot carts       │                                                                                                              
 │                                                                    │                                                                                                              
@@ -545,64 +545,64 @@ The most complex transactional flow. Multiple services must coordinate.
 │       │                                                                │                                                                                                          
 │       ▼                                                                │                                                                                                          
 │  ┌──────────────────────────────────────────────────────────────────┐ │
-│  │  CHECKOUT ORCHESTRATOR (saga coordinator)                         │ │                                                                                                          
-│  │                                                                    │ │                                                                                                         
-│  │  Step 1: VALIDATE                                    Timeout: 2s  │ │
+│  │  CHECKOUT ORCHESTRATOR (saga coordinator)                        │ │                                                                                                          
+│  │                                                                  │ │                                                                                                         
+│  │  Step 1: VALIDATE                                    Timeout: 2s │ │
 │  │  ┌───────────────────────────────────────────────────────────┐   │ │                                                                                                           
-│  │  │ In parallel:                                               │   │ │                                                                                                          
+│  │  │ In parallel:                                              │   │ │                                                                                                          
 │  │  │  • Pricing: resolve final prices (lock)                   │   │ │                                                                                                           
 │  │  │  • Inventory: check availability                          │   │ │                                                                                                           
 │  │  │  • Address: validate shipping address                     │   │ │
 │  │  │  • Tax: calculate tax for (items × destination)           │   │ │                                                                                                           
 │  │  │  • Fraud: preliminary fraud score                         │   │ │                                                                                                           
-│  │  │                                                            │   │ │                                                                                                          
+│  │  │                                                           │   │ │                                                                                                          
 │  │  │  ALL must succeed. Any failure → abort checkout.          │   │ │                                                                                                           
 │  │  └───────────────────────────────────────────────────────────┘   │ │                                                                                                           
-│  │       │                                                           │ │                                                                                                          
-│  │       ▼ all passed                                                │ │                                                                                                          
-│  │                                                                    │ │                                                                                                         
-│  │  Step 2: RESERVE                                     Timeout: 3s  │ │
+│  │       │                                                          │ │                                                                                                          
+│  │       ▼ all passed                                               │ │                                                                                                          
+│  │                                                                  │ │                                                                                                         
+│  │  Step 2: RESERVE                                    Timeout: 3s  │ │
 │  │  ┌───────────────────────────────────────────────────────────┐   │ │                                                                                                           
-│  │  │ Sequential (order matters for compensation):               │   │ │                                                                                                          
+│  │  │ Sequential (order matters for compensation):              │   │ │                                                                                                          
 │  │  │  1. Payment: authorize (hold funds, don't capture)        │   │ │                                                                                                           
 │  │  │  2. Inventory: reserve units (decrement available count)  │   │ │                                                                                                           
-│  │  │                                                            │   │ │                                                                                                          
+│  │  │                                                           │   │ │                                                                                                          
 │  │  │  If payment auth fails → abort, no compensation needed.   │   │ │                                                                                                           
 │  │  │  If inventory fails → release payment auth, then abort.   │   │ │                                                                                                           
 │  │  └───────────────────────────────────────────────────────────┘   │ │                                                                                                           
-│  │       │                                                           │ │                                                                                                          
-│  │       ▼ all reserved                                              │ │
-│  │                                                                    │ │                                                                                                         
-│  │  Step 3: COMMIT                                      Timeout: 2s  │ │
+│  │       │                                                          │ │                                                                                                          
+│  │       ▼ all reserved                                             │ │
+│  │                                                                  │ │                                                                                                         
+│  │  Step 3: COMMIT                                      Timeout: 2s │ │
 │  │  ┌───────────────────────────────────────────────────────────┐   │ │                                                                                                           
 │  │  │ 1. Create order record (status: CONFIRMED)                │   │ │
-│  │  │ 2. Clear cart                                              │   │ │                                                                                                          
+│  │  │ 2. Clear cart                                             │   │ │                                                                                                          
 │  │  │ 3. Publish event: "order.confirmed"                       │   │ │                                                                                                           
-│  │  │                                                            │   │ │                                                                                                          
+│  │  │                                                           │   │ │                                                                                                          
 │  │  │ The order record is the point of no return.               │   │ │                                                                                                           
 │  │  │ After this, we MUST fulfill or explicitly cancel.         │   │ │
 │  │  └───────────────────────────────────────────────────────────┘   │ │                                                                                                           
-│  │       │                                                           │ │                                                                                                          
-│  │       ▼                                                           │ │                                                                                                          
-│  │                                                                    │ │                                                                                                         
-│  │  Step 4: POST-COMMIT (async, event-driven)                        │ │
+│  │       │                                                          │ │                                                                                                          
+│  │       ▼                                                          │ │                                                                                                          
+│  │                                                                  │ │                                                                                                         
+│  │  Step 4: POST-COMMIT (async, event-driven)                       │ │
 │  │  ┌───────────────────────────────────────────────────────────┐   │ │                                                                                                           
-│  │  │  Triggered by "order.confirmed" event:                     │   │ │                                                                                                          
-│  │  │                                                            │   │ │                                                                                                          
+│  │  │  Triggered by "order.confirmed" event:                    │   │ │                                                                                                          
+│  │  │                                                           │   │ │                                                                                                          
 │  │  │  • Payment: capture (move from auth → capture)            │   │ │                                                                                                           
 │  │  │  • Fulfillment: create shipment, assign warehouse         │   │ │                                                                                                           
 │  │  │  • Notification: send confirmation email                  │   │ │                                                                                                           
 │  │  │  • Analytics: record conversion                           │   │ │                                                                                                           
 │  │  │  • Loyalty: award points                                  │   │ │                                                                                                           
 │  │  │  • Seller: notify seller of sale                          │   │ │                                                                                                           
-│  │  │                                                            │   │ │                                                                                                          
+│  │  │                                                           │   │ │                                                                                                          
 │  │  │  These are INDEPENDENT. If email fails, the order         │   │ │                                                                                                           
 │  │  │  is still valid. Each has its own retry/DLQ policy.       │   │ │                                                                                                           
 │  │  └───────────────────────────────────────────────────────────┘   │ │                                                                                                           
 │  └──────────────────────────────────────────────────────────────────┘ │                                                                                                           
-│                                                                        │                                                                                                          
-│  COMPENSATION (rollback on failure):                                   │
-│                                                                        │                                                                                                          
+│                                                                       │                                                                                                          
+│  COMPENSATION (rollback on failure):                                  │
+│                                                                       │                                                                                                          
 │  ┌──────────────────────────────────────────────────────────────────┐ │
 │  │  If Step 2.2 (inventory) fails after Step 2.1 (payment auth):   │ │                                                                                                            
 │  │    → Release payment authorization                               │ │                                                                                                           
@@ -882,39 +882,39 @@ Caching Strategy (Three Tiers)
 
 ┌──────────────────────────────────────────────────────────────────┐                                                                                                                
 │  TIER 1: CDN EDGE CACHE                                          │
-│                                                                   │                                                                                                               
+│                                                                  │                                                                                                               
 │  What:    Static assets, product page HTML fragments             │
 │  TTL:     Images: 1 year (immutable URLs). HTML: 30-60s.        │                                                                                                                 
 │  Hit rate: 95% (static), 60% (dynamic)                          │                                                                                                                 
 │  Latency: 1-5ms (edge PoP to user)                              │                                                                                                                 
 │  Invalidation: Purge API on catalog change.                     │                                                                                                                 
 │                 Stale-while-revalidate for soft updates.         │                                                                                                                
-│                                                                   │                                                                                                               
+│                                                                  │                                                                                                               
 ├──────────────────────────────────────────────────────────────────┤
 │  TIER 2: APPLICATION CACHE (Redis, per-cell)                     │                                                                                                                
-│                                                                   │                                                                                                               
+│                                                                  │                                                                                                               
 │  What:    Product details, prices, stock status, session data    │
-│  TTL:     Prices: 60s. Products: 300s. Sessions: 30min.         │                                                                                                                 
+│  TTL:     Prices: 60s. Products: 300s. Sessions: 30min.          │                                                                                                                 
 │  Hit rate: 80-90%                                                │                                                                                                                
-│  Latency: < 1ms (same AZ)                                       │                                                                                                                 
+│  Latency: < 1ms (same AZ)                                        │                                                                                                                 
 │  Size:    50-100 GB per cell                                     │                                                                                                                
 │  Invalidation: Event-driven. Price change event → delete         │                                                                                                                
-│                 cached price for that SKU. Write-through          │                                                                                                               
-│                 for session data.                                 │                                                                                                               
-│                                                                   │                                                                                                               
-│  Topology:  Redis Cluster (6+ nodes per cell for HA)            │                                                                                                                 
+│                 cached price for that SKU. Write-through         │                                                                                                               
+│                 for session data.                                │                                                                                                               
+│                                                                  │                                                                                                               
+│  Topology:  Redis Cluster (6+ nodes per cell for HA)             │                                                                                                                 
 │             Read replicas for read-heavy keys.                   │                                                                                                                
-│                                                                   │                                                                                                               
+│                                                                  │                                                                                                               
 ├──────────────────────────────────────────────────────────────────┤                                                                                                                
 │  TIER 3: LOCAL IN-PROCESS CACHE                                  │                                                                                                                
-│                                                                   │                                                                                                               
+│                                                                  │                                                                                                               
 │  What:    Config, feature flags, category tree, tax tables       │
 │  TTL:     5-60 seconds                                           │                                                                                                                
 │  Hit rate: 99%+ (small, stable datasets)                         │                                                                                                                
 │  Latency: < 0.01ms (memory access)                               │                                                                                                                
 │  Size:    10-100 MB per process                                  │                                                                                                                
 │  Invalidation: Poll or event-driven refresh.                     │                                                                                                                
-│                                                                   │
+│                                                                  │
 │  Risk:    Inconsistency window between processes.                │                                                                                                                
 │           Process A has new config, Process B has old.           │
 │           Acceptable for config/flags. NOT for prices/inventory. │                                                                                                                
@@ -1049,31 +1049,31 @@ downstream services don't know time has run out.
 ┌─────────────────────────────────────────────────────────────────────┐
 │  DATA CLASSIFICATION FOR MULTI-REGION                                │                                                                                                            
 │                                                                      │                                                                                                            
-│  ┌──────────────────────────────────────────────────────────────┐   │
+│  ┌──────────────────────────────────────────────────────────────┐    │
 │  │  GLOBAL (replicated to all regions, eventual consistency)     │   │                                                                                                            
-│  │                                                                │   │                                                                                                           
+│  │                                                               │   │                                                                                                           
 │  │  • Product catalog (same products everywhere)                 │   │                                                                                                            
-│  │  • Seller data                                                 │   │                                                                                                           
+│  │  • Seller data                                                │   │                                                                                                           
 │  │  • User account core (email, password hash)                   │   │                                                                                                            
-│  │  • Category taxonomy                                           │   │                                                                                                           
-│  │                                                                │   │                                                                                                           
+│  │  • Category taxonomy                                          │   │                                                                                                           
+│  │                                                               │   │                                                                                                           
 │  │  Replication: Kafka MirrorMaker 2 (100-500ms lag)             │   │                                                                                                            
-│  │  Conflict resolution: last-writer-wins on version vector      │   │                                                                                                            
+│  │  Conflict resolution: **last-writer-wins on version vector**  │   │                                                                                                            
 │  │  Primary: region where the seller/user was created            │   │                                                                                                            
-│  │           (writes route to primary, reads from local replica)  │   │                                                                                                           
-│  └──────────────────────────────────────────────────────────────┘   │                                                                                                             
+│  │           (writes route to primary, reads from local replica) │   │                                                                                                           
+│  └──────────────────────────────────────────────────────────────┘    │                                                                                                             
 │                                                                      │                                                                                                            
-│  ┌──────────────────────────────────────────────────────────────┐   │                                                                                                             
+│  ┌──────────────────────────────────────────────────────────────┐    │                                                                                                             
 │  │  REGIONAL (stays in one region, no replication)               │   │                                                                                                            
-│  │                                                                │   │
+│  │                                                               │   │
 │  │  • Shopping carts (user shops in one region at a time)        │   │                                                                                                            
-│  │  • Active checkout sessions                                    │   │                                                                                                           
+│  │  • Active checkout sessions                                   │   │                                                                                                           
 │  │  • Payment authorizations (must be region-local for latency)  │   │                                                                                                            
-│  │  • Inventory reservations                                      │   │                                                                                                           
-│  │                                                                │   │                                                                                                           
+│  │  • Inventory reservations                                     │   │                                                                                                           
+│  │                                                               │   │                                                                                                           
 │  │  If user moves regions (VPN, travel):                         │   │
-│  │    Cart is re-fetched from origin region or                    │   │                                                                                                           
-│  │    replicated on-demand when user first accesses.              │   │                                                                                                           
+│  │    Cart is re-fetched from origin region or                   │   │                                                                                                           
+│  │    replicated on-demand when user first accesses.             │   │                                                                                                           
 │  └──────────────────────────────────────────────────────────────┘   │                                                                                                             
 │                                                                      │                                                                                                            
 │  ┌──────────────────────────────────────────────────────────────┐   │                                                                                                             
@@ -1092,19 +1092,19 @@ downstream services don't know time has run out.
 │                                                                      │                                                                                                            
 │  Region US-EAST goes down.                                           │
 │                                                                      │                                                                                                            
-│  1. Route 53 health checks detect failure (30s)                     │
-│  2. DNS stops routing to US-EAST (TTL: 60s)                         │                                                                                                             
+│  1. Route 53 health checks detect failure (30s)                      │
+│  2. DNS stops routing to US-EAST (TTL: 60s)                          │                                                                                                             
 │  3. US customers are routed to US-WEST                               │                                                                                                            
 │  4. US-WEST has:                                                     │                                                                                                            
-│     • Full catalog replica (always in sync via MirrorMaker)         │                                                                                                             
+│     • Full catalog replica (always in sync via MirrorMaker)          │                                                                                                             
 │     • User accounts (replicated)                                     │                                                                                                            
-│     • Regional data (pricing, tax — already configured for US)      │                                                                                                             
-│     • NO active carts/checkouts from US-EAST users                  │                                                                                                             
+│     • Regional data (pricing, tax — already configured for US)       │                                                                                                             
+│     • NO active carts/checkouts from US-EAST users                   │                                                                                                             
 │       → Customers must re-add items to cart (acceptable tradeoff     │                                                                                                            
-│         vs. the complexity of cross-region cart replication)          │                                                                                                           
+│         vs. the complexity of cross-region cart replication)         │                                                                                                           
 │  5. US-EAST recovery:                                                │                                                                                                            
-│     • Drain traffic from US-WEST back to US-EAST gradually          │                                                                                                             
-│     • Replay events from Kafka (retained 7 days) to rebuild state   │                                                                                                             
+│     • Drain traffic from US-WEST back to US-EAST gradually           │                                                                                                             
+│     • Replay events from Kafka (retained 7 days) to rebuild state    │                                                                                                             
 │     • Run reconciliation to catch any divergence                     │                                                                                                            
 │                                                                      │                                                                                                            
 │  RTO (Recovery Time Objective): < 2 minutes (DNS failover)          │                                                                                                             
@@ -1174,7 +1174,7 @@ downstream services don't know time has run out.
 │  ALERTING HIERARCHY:                                                  │                                                                                                           
 │                                                                       │                                                                                                           
 │  P0 (page immediately):                                               │                                                                                                           
-│    • Orders/min drops > 20% (revenue impact)                         │                                                                                                            
+│    • Orders/min drops > 20% (revenue impact)                          │                                                                                                            
 │    • Payment error rate > 5%                                          │                                                                                                           
 │    • Any cell completely unresponsive                                  │                                                                                                          
 │    • Kafka consumer lag > 1 hour on critical topics                   │                                                                                                           
@@ -1244,7 +1244,7 @@ downstream services don't know time has run out.
 │    1. Deploy code that reads old + new schema                        │
 │    2. Run migration (add column, backfill)                           │                                                                                                            
 │    3. Deploy code that reads only new schema                         │                                                                                                            
-│    Never: ALTER TABLE ADD NOT NULL on a live, large table.           │                                                                                                            
+│    **Never: ALTER TABLE ADD NOT NULL on a live, large table.**       │                                                                                                            
 │    Always: backward-compatible schema changes only.                  │                                                                                                            
 └──────────────────────────────────────────────────────────────────────┘
                                                                                                                                                                                       
@@ -1395,13 +1395,13 @@ Summary: Why Each Decision
 ┌────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │              Decision              │                                                   Reason                                                   │                                 
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Cell-based architecture            │ Blast radius containment. Cell failure affects ≤5% of customers.                                           │
+│ Cell-based architecture            │ **Blast radius containment**. Cell failure affects ≤5% of customers.                                           │
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Shuffle sharding                   │ Correlated failure affects even fewer. Two-cell failure ≈ 0.5%.                                            │                                 
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤                                 
 │ Event-driven backbone (Kafka)      │ Decouples services. Notification failure doesn't block checkout.                                           │                                 
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤                                 
-│ CQRS (separate read/write stores)  │ 10,000:1 read/write ratio. Optimize each path independently.                                               │
+│ CQRS (separate read/write stores)  │ **10,000:1 read/write ratio. Optimize each path independently**.                                           │
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤                                 
 │ DynamoDB for cart/sessions         │ Predictable single-digit ms latency at any scale. No connection pool drama.                                │
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤                                 
