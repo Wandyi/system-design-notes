@@ -40,8 +40,8 @@ Full System Overview
            │  │  Cassandra   │  │  Cluster   │  │  (metadata)    │   │                                                                                                                                           
            │  │  (messages)  │  │ (presence/ │  │  rooms, users  │   │                                                                                                                                           
            │  └──────────────┘  │  sessions) │  └────────────────┘   │                                                                                                                                           
-           │                    └────────────┘                        │                                                                                                                                          
-           └──────────────────────────────────────────────────────────┘                                                                                                                                          
+           │                    └────────────┘                       │                                                                                                                                          
+           └─────────────────────────────────────────────────────────┘                                                                                                                                          
                                                                                                                                                                                                                  
 ---             
 Layer 1: WebSocket Connection Servers
@@ -283,8 +283,8 @@ Room size         Strategy
 Tiered fan-out for large rooms
 
 Message published to "room:megachannel"                                                                                                                                                                        
-│                                                                                                                                                                                                     
-▼
+                │                                                                                                                                                                                                     
+                ▼
 Kafka topic: room:megachannel  (1 message written)                                                                                                                                                             
 │                                                                                                                                                                                                     
 ├── Region-US consumers (500 WS servers)

@@ -464,7 +464,7 @@ With a queue:
        │
        ▼
   ┌──────────────────────────────────────────────────────┐
-  │              Virtual Waiting Room                     │
+  │              Virtual Waiting Room                    │
   │                                                      │
   │  Static HTML page served from CDN                    │
   │  (no backend hit for page load — pure CDN)           │
@@ -475,23 +475,23 @@ With a queue:
   │   3. When status = "ADMITTED" → redirect to booking  │
   │                                                      │
   │  Visual: animated progress bar, position number,     │
-  │          estimated wait time                          │
+  │          estimated wait time                         │
   └──────────────────┬───────────────────────────────────┘
                      │
                      ▼
   ┌──────────────────────────────────────────────────────┐
-  │              Queue Backend (Redis)                    │
+  │              Queue Backend (Redis)                   │
   │                                                      │
   │  ZADD queue:{event_id} {timestamp_ms} {queue_token}  │
   │  → 10M members in sorted set                         │
-  │  → Memory: 10M × ~80 bytes = 800 MB (fits easily)   │
+  │  → Memory: 10M × ~80 bytes = 800 MB (fits easily)    │
   │                                                      │
   │  Admission controller (runs every 1 second):         │
   │   1. Read current admission rate from config         │
   │      (e.g., 200 users/second)                        │
   │   2. ZRANGEBYSCORE queue:{event_id} -inf {cursor}    │
   │      LIMIT 0 200                                     │
-  │   3. For each admitted user: set their status to      │
+  │   3. For each admitted user: set their status to     │
   │      ADMITTED in Redis                               │
   │   4. Advance cursor                                  │
   │                                                      │
@@ -507,7 +507,7 @@ With a queue:
   ┌──────────────────────────────────────────────────────┐
   │              Booking Service                          │
   │  (sees manageable, controlled traffic)                │
-  │                                                      │
+  │                                                       │
   │  Every request must present a valid queue_token       │
   │  that has status = ADMITTED.                          │
   │  Requests without valid token → 403 (queue bypass     │
@@ -774,39 +774,39 @@ t=10m30s User enters payment info
 t=10m45s POST /bookings → Booking Service orchestrates:
 
          ┌─────────────────────────────────────────────────────┐
-         │              Booking Saga                            │
+         │              Booking Saga                           │
          │                                                     │
          │  Step 1: Validate hold (still active? not expired?) │
          │          Redis GET hold:{event_id}:{seat_id}        │
          │          ✓ Hold valid (5:15 remaining)              │
          │                                                     │
          │  Step 2: Create booking record (status = PENDING)   │
-         │          INSERT INTO bookings (...)                  │
+         │          INSERT INTO bookings (...)                 │
          │                                                     │
          │  Step 3: Authorize payment (hold funds on card)     │
-         │          POST /payments/authorize                    │
+         │          POST /payments/authorize                   │
          │          → Stripe: PaymentIntent.create(            │
-         │              amount: 3000, capture_method: manual)   │
+         │              amount: 3000, capture_method: manual)  │
          │          ✓ Authorized: pi_abc123                    │
          │                                                     │
          │  Step 4: Confirm seats (HELD → SOLD, atomic)        │
-         │          UPDATE seats SET status = 'SOLD',           │
-         │            booking_id = bk_001                       │
-         │          WHERE seat_id IN (...) AND status = 'HELD'  │
-         │            AND held_by = user_42                     │
+         │          UPDATE seats SET status = 'SOLD',          │
+         │            booking_id = bk_001                      │
+         │          WHERE seat_id IN (...) AND status = 'HELD' │
+         │            AND held_by = user_42                    │
          │          ✓ 2 rows affected (both seats confirmed)   │
          │                                                     │
-         │  Step 5: Capture payment (actually charge the card)  │
-         │          POST /payments/capture                      │
+         │  Step 5: Capture payment (actually charge the card) │
+         │          POST /payments/capture                     │
          │          → Stripe: PaymentIntent.capture(pi_abc123) │
          │          ✓ Captured                                 │
          │                                                     │
-         │  Step 6: Update booking status → CONFIRMED           │
-         │          Release Redis holds (no longer needed)      │
+         │  Step 6: Update booking status → CONFIRMED          │
+         │          Release Redis holds (no longer needed)     │
          │          DEL hold:{event_id}:{seat_id}              │
          │                                                     │
-         │  Step 7: Issue tickets (async via Kafka)             │
-         │          Generate QR codes, send confirmation email  │
+         │  Step 7: Issue tickets (async via Kafka)            │
+         │          Generate QR codes, send confirmation email │
          │                                                     │
          └─────────────────────────────────────────────────────┘
 
@@ -894,13 +894,13 @@ Idempotency key format: {booking_id}_{operation}_{version}
 ┌──────────┐  hold acquired  ┌──────────────────┐  payment auth  ┌───────────────────┐
 │  (start) │────────────────→│  HOLD_ACQUIRED   │──────────────→│ PAYMENT_AUTHORIZED │
 └──────────┘                 └────────┬─────────┘               └─────────┬─────────┘
-                                      │                                    │
+                                      │                                   │
                                hold expires /                       seats confirmed
                                user cancels                        + payment captured
-                                      │                                    │
-                                      ▼                                    ▼
+                                      │                                   │
+                                      ▼                                   ▼
                              ┌─────────────────┐                  ┌────────────────┐
-                             │    CANCELLED     │                  │   CONFIRMED    │
+                             │    CANCELLED    │                  │   CONFIRMED    │
                              └─────────────────┘                  └───────┬────────┘
                                                                           │
                                                                    user requests
@@ -1039,12 +1039,12 @@ Enforcement across dimensions:
 │ Queue position update    │ In-app only (via polling response)     │
 │ Admitted to booking page │ Push notification + SMS                │
 │ Hold acquired            │ In-app only                            │
-│ Hold expiring (2 min)    │ In-app + push                         │
+│ Hold expiring (2 min)    │ In-app + push                          │
 │ Booking confirmed        │ Email + push + SMS                     │
 │ Payment failed           │ Email + push                           │
 │ Tickets available        │ Email (PDF) + push (deep link)         │
 │ Event reminder (24h)     │ Push + email                           │
-│ Event cancelled/changed  │ Email + SMS + push (all channels)     │
+│ Event cancelled/changed  │ Email + SMS + push (all channels)      │
 │ Refund processed         │ Email                                  │
 └──────────────────────────┴────────────────────────────────────────┘
 ```
@@ -1105,8 +1105,8 @@ Normal approach: All events share the same database.
 Production approach: Per-event database isolation for mega-events.
 
                     ┌─────────────────────────────┐
-                    │     Routing Layer            │
-                    │  event_id → database         │
+                    │     Routing Layer           │
+                    │  event_id → database        │
                     └──────────┬──────────────────┘
                                │
               ┌────────────────┼────────────────┐
@@ -1121,7 +1121,7 @@ Production approach: Per-event database isolation for mega-events.
     │  - 3 replicas  │ │    1000s of   │ │  - 3 replicas   │
     │  - Provisioned │ │    events     │ │  - Provisioned  │
     │    for 10K QPS │ │  - Standard   │ │    for 10K QPS  │
-    │  - Spun up 24h │ │    provisioning│ │  - Spun up 24h  │
+    │  - Spun up 24h │ │   provisioning│ │  - Spun up 24h  │
     │    before sale │ │               │ │    before sale  │
     │  - Torn down   │ │               │ │  - Torn down    │
     │    after sale  │ │               │ │    after sale   │
@@ -1143,7 +1143,7 @@ so moving one partition to a dedicated server is straightforward:
 
 ```
   ┌──────────────────────────────────────────┐
-  │          Mega-Event DB (World Cup)        │
+  │          Mega-Event DB (World Cup)       │
   │                                          │
   │   Primary (us-east-1a)                   │
   │     ├── Sync Standby (us-east-1b)   HA  │
@@ -1165,7 +1165,7 @@ so moving one partition to a dedicated server is straightforward:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        Caching Layers                                    │
+│                        Caching Layers                                   │
 │                                                                         │
 │  Layer 0: CDN (90%+ of initial traffic)                                 │
 │    - Event listing pages (5-minute TTL)                                 │
@@ -1184,16 +1184,16 @@ so moving one partition to a dedicated server is straightforward:
 │    │ queue:{event_id}             │ 800 MB │ event duration    │        │
 │    │ (sorted set, 10M members)    │        │                   │        │
 │    ├──────────────────────────────┼────────┼───────────────────┤        │
-│    │ hold:{event_id}:{seat_id}   │ 50 MB  │ 420s              │        │
+│    │ hold:{event_id}:{seat_id}    │ 50 MB  │ 420s              │        │
 │    │ (80K possible keys)          │        │                   │        │
 │    ├──────────────────────────────┼────────┼───────────────────┤        │
-│    │ avail:{event_id}:{section}  │ 1 MB   │ 2s                │        │
+│    │ avail:{event_id}:{section}   │ 1 MB   │ 2s                │        │
 │    │ (section availability count) │        │                   │        │
 │    ├──────────────────────────────┼────────┼───────────────────┤        │
-│    │ seatmap:{event_id}:{section}│ 500 MB │ 1s                │        │
+│    │ seatmap:{event_id}:{section} │ 500 MB │ 1s                │        │
 │    │ (per-seat status for section)│        │                   │        │
 │    ├──────────────────────────────┼────────┼───────────────────┤        │
-│    │ rl:{user_id}:{event_id}     │ 200 MB │ 60s               │        │
+│    │ rl:{user_id}:{event_id}      │ 200 MB │ 60s               │        │
 │    │ (rate limiter per user)      │        │                   │        │
 │    ├──────────────────────────────┼────────┼───────────────────┤        │
 │    │ bot_score:{session_id}       │ 100 MB │ 3600s             │        │
@@ -1382,7 +1382,7 @@ Solution: Per-event isolation (already designed in Section 15).
 │                              │ Ticket delivery delayed by seconds to minutes.    │
 │                              │ No data loss (replication factor 3).              │
 ├──────────────────────────────┼───────────────────────────────────────────────────┤
-│ Clock skew between servers   │ Hold expiry drift: hold timer could be ±2s off.  │
+│ Clock skew between servers   │ Hold expiry drift: hold timer could be ±2s off.   │
 │                              │ Redis TTL is absolute (server clock-independent). │
 │                              │ DB held_until checked against DB's NOW() (same    │
 │                              │ clock). No cross-server clock comparison needed.  │
@@ -1459,14 +1459,14 @@ Solution: Client-generated idempotency key.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                 WORLD CUP FINAL — SALE LIVE                          │
-│                 Started: 10:00:00 AM | Elapsed: 4m 32s               │
+│                 WORLD CUP FINAL — SALE LIVE                         │
+│                 Started: 10:00:00 AM | Elapsed: 4m 32s              │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  QUEUE                          INVENTORY                           │
-│  ├─ In queue:        8,234,102  ├─ Total seats:    80,000          │
-│  ├─ Admitted so far:   42,000   ├─ Sold:           31,247   (39%)  │
-│  ├─ Admission rate:    200/sec  ├─ Held:           12,483   (16%)  │
+│  ├─ In queue:        8,234,102  ├─ Total seats:    80,000           │
+│  ├─ Admitted so far:   42,000   ├─ Sold:           31,247   (39%)   │
+│  ├─ Admission rate:    200/sec  ├─ Held:           12,483   (16%)   │
 │  ├─ Est. sellout:      ~8 min   ├─ Available:      36,270   (45%)  │
 │  └─ Bots blocked:      14,291   └─ Blocked:            0          │
 │                                                                     │

@@ -188,8 +188,8 @@ Every region is a complete, self-sufficient deployment. If all other regions van
 │  └────────────────────────────┼──────────────────────────────────────┘   │                                                                                                        
 │                               │                                          │
 │  ┌────────────────────────────┼──────────────────────────────────────┐   │                                                                                                        
-│  │  CELL TIER                 ▼                                       │   │
-│  │                                                                    │   │                                                                                                       
+│  │  CELL TIER                 ▼                                      │   │
+│  │                                                                   │   │                                                                                                       
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │   │
 │  │  │   CELL 1     │  │   CELL 2     │  │   CELL N     │           │   │                                                                                                          
 │  │  │              │  │              │  │              │           │   │
@@ -299,7 +299,7 @@ Service Map (Within a Cell)
 │  │  │ Order    │ │ Payment  │ │Inventory │ │ Pricing  │ │ Promotion││ │                                                                                                           
 │  │  │ Service  │ │ Service  │ │ Service  │ │ Service  │ │ Service  ││ │                                                                                                           
 │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘│ │                                                                                                           
-│  │                                                                      │ │                                                                                                       
+│  │                                                                  │ │                                                                                                       
 │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐             │ │                                                                                                           
 │  │  │ Seller   │ │ Review   │ │Shipping  │ │ Tax      │             │ │
 │  │  │ Service  │ │ Service  │ │ Service  │ │ Service  │             │ │                                                                                                           
@@ -329,7 +329,7 @@ The most read-heavy service in the system. Reads outnumber writes by 10,000:1.
 │                                                                    │
 │  Write Path (sellers update products):                             │
 │                                                                    │                                                                                                              
-│   Seller Portal → Catalog Write API → Primary DB (PostgreSQL)     │
+│   Seller Portal → Catalog Write API → Primary DB (PostgreSQL)      │
 │                                         │                          │                                                                                                              
 │                                         │ CDC (Change Data Capture)│
 │                                         ▼                          │                                                                                                              
@@ -378,7 +378,7 @@ The most read-heavy service in the system. Reads outnumber writes by 10,000:1.
 │      (denormalized, single-digit-ms reads, no joins)               │                                                                                                              
 │                                                                    │                                                                                                              
 │  Scale:                                                            │
-│    500M products × ~2KB each = ~1 TB in DynamoDB                  │                                                                                                               
+│    500M products × ~2KB each = ~1 TB in DynamoDB                   │                                                                                                               
 │    DynamoDB handles millions of reads/sec with on-demand capacity  │                                                                                                              
 │    Hot products (top 0.1%) cached in Redis: 500K items × 2KB      │                                                                                                               
 │    = 1 GB in cache. Cache hit rate: 80%+                          │                                                                                                               
@@ -443,8 +443,8 @@ Q&A                NO          Hide section
 │  │  │  freetext│   │          │   │ ~2 TB    │               │   │                                                                                                                
 │  │  │  )       │   │          │   │ sharded  │               │   │                                                                                                                
 │  │  └──────────┘   └──────────┘   └─────┬────┘               │   │                                                                                                                
-│  │                                       │                     │   │                                                                                                              
-│  │                                       ▼                     │   │                                                                                                              
+│  │                                       │                    │   │                                                                                                              
+│  │                                       ▼                    │   │                                                                                                              
 │  │                                ┌──────────┐                │   │                                                                                                               
 │  │                                │ Re-Ranker│                │   │
 │  │                                │ (ML)     │                │   │                                                                                                               
@@ -452,7 +452,7 @@ Q&A                NO          Hide section
 │  │                                │ Re-rank  │                │   │                                                                                                               
 │  │                                │ by:      │                │   │
 │  │                                │ • CTR    │                │   │                                                                                                               
-│  │                                │ • conversion             │   │                                                                                                                
+│  │                                │ • conversion              │   │                                                                                                                
 │  │                                │ • relevance              │   │
 │  │                                │ • personalization        │   │                                                                                                                
 │  │                                │ • sponsored rank         │   │                                                                                                                
@@ -468,8 +468,8 @@ Q&A                NO          Hide section
 │    • OpenSearch cluster: 100+ data nodes, 3 master nodes           │
 │    • Index sharded by category (electronics, clothing, etc.)       │                                                                                                              
 │      → queries filtered by category only hit relevant shards       │                                                                                                              
-│    • Hot indices (last 30 days of catalog changes) on SSD           │                                                                                                             
-│    • Cold indices (historical) on HDD                               │                                                                                                             
+│    • Hot indices (last 30 days of catalog changes) on SSD          │                                                                                                             
+│    • Cold indices (historical) on HDD                              │                                                                                                             
 │    • Query cache: top 10K queries cached for 60s → 40% cache hit   │                                                                                                              
 └───────────────────────────────────────────────────────────────────┘
                                                                                                                                                                                       
@@ -482,7 +482,7 @@ Q&A                NO          Hide section
 │  Requirements:                                                     │
 │    • 50K writes/sec at peak                                        │                                                                                                              
 │    • Cart must survive node failures (not lost on crash)           │                                                                                                              
-│    • Sub-10ms latency (it's in the critical path of every page    │                                                                                                               
+│    • Sub-10ms latency (it's in the critical path of every page     │                                                                                                               
 │      that shows the cart icon count)                               │                                                                                                              
 │    • Merge anonymous → authenticated cart on login                 │
 │                                                                    │                                                                                                              
@@ -541,9 +541,9 @@ The most complex transactional flow. Multiple services must coordinate.
 ┌───────────────────────────────────────────────────────────────────────┐
 │  CHECKOUT FLOW (SAGA ORCHESTRATION)                                    │                                                                                                          
 │                                                                        │                                                                                                          
-│  Customer clicks "Place Order"                                         │
-│       │                                                                │                                                                                                          
-│       ▼                                                                │                                                                                                          
+│     Customer clicks "Place Order"                                     │    
+│               │                                                                │                                                                                                          
+│               ▼                                                               │                                                                                                          
 │  ┌──────────────────────────────────────────────────────────────────┐ │
 │  │  CHECKOUT ORCHESTRATOR (saga coordinator)                        │ │                                                                                                          
 │  │                                                                  │ │                                                                                                         
@@ -604,29 +604,29 @@ The most complex transactional flow. Multiple services must coordinate.
 │  COMPENSATION (rollback on failure):                                  │
 │                                                                       │                                                                                                          
 │  ┌──────────────────────────────────────────────────────────────────┐ │
-│  │  If Step 2.2 (inventory) fails after Step 2.1 (payment auth):   │ │                                                                                                            
+│  │  If Step 2.2 (inventory) fails after Step 2.1 (payment auth):    │ │                                                                                                            
 │  │    → Release payment authorization                               │ │                                                                                                           
-│  │    → Return error: "Item went out of stock during checkout"     │ │                                                                                                            
-│  │                                                                   │ │                                                                                                          
-│  │  If Step 3 (commit) fails after Step 2 (reserves):              │ │                                                                                                            
+│  │    → Return error: "Item went out of stock during checkout"      │ │                                                                                                            
+│  │                                                                  │ │                                                                                                          
+│  │  If Step 3 (commit) fails after Step 2 (reserves):               │ │                                                                                                            
 │  │    → Release inventory reservation                               │ │                                                                                                           
 │  │    → Release payment authorization                               │ │
-│  │    → Return error: "Order could not be created, please retry"   │ │                                                                                                            
-│  │                                                                   │ │                                                                                                          
-│  │  If compensation itself fails:                                    │ │
+│  │    → Return error: "Order could not be created, please retry"    │ │                                                                                                            
+│  │                                                                  │ │                                                                                                          
+│  │  If compensation itself fails:                                   │ │
 │  │    → Write to "stuck_orders" table                               │ │                                                                                                           
-│  │    → Alert on-call                                                │ │                                                                                                          
+│  │    → Alert on-call                                               │ │                                                                                                          
 │  │    → Reconciliation job picks it up within 15 minutes            │ │                                                                                                           
 │  └──────────────────────────────────────────────────────────────────┘ │                                                                                                           
 │                                                                        │                                                                                                          
 │  IDEMPOTENCY:                                                          │                                                                                                          
 │                                                                        │                                                                                                          
-│  Every checkout attempt has a unique checkout_token (generated          │
-│  client-side when the checkout page loads). The orchestrator            │                                                                                                         
+│  Every checkout attempt has a unique checkout_token (generated         │
+│  client-side when the checkout page loads). The orchestrator           │                                                                                                         
 │  deduplicates by token. Double-clicks, retries, and network            │                                                                                                          
-│  replays are all safe.                                                  │                                                                                                         
+│  replays are all safe.                                                 │                                                                                                         
 │                                                                        │                                                                                                          
-│  ┌──────────────────────────────────────────────────────────────────┐ │                                                                                                           
+│  ┌──────────────────────────────────────────────────────────────────┐  │                                                                                                           
 │  │  checkout_attempts table:                                         │ │                                                                                                          
 │  │  PK: checkout_token                                               │ │
 │  │  status: pending | completed | failed                             │ │                                                                                                          
@@ -649,17 +649,17 @@ The most complex transactional flow. Multiple services must coordinate.
 │  Principles:                                                       │
 │    1. NEVER store raw card numbers (PCI DSS)                       │                                                                                                              
 │    2. Auth then capture (never direct charge)                      │                                                                                                              
-│    3. **Every external call has an idempotency key**                   │                                                                                                              
+│    3. **Every external call has an idempotency key**               │                                                                                                              
 │    4. Reconcile daily against payment provider                     │                                                                                                              
 │                                                                    │                                                                                                              
 │  ┌──────────────────────────────────────────────────────────────┐ │                                                                                                               
 │  │  Architecture:                                                │ │                                                                                                              
-│  │                                                                │ │                                                                                                             
-│  │  Checkout ──▶ Payment Service ──▶ Payment Gateway Adapter    │ │
+│  │                                                               │ │                                                                                                             
+│  │  Checkout ──▶ Payment Service ──▶ Payment Gateway Adapter     │ │
 │  │  Orchestrator       │               │                         │ │                                                                                                              
 │  │                     │          ┌────┴────┐                    │ │                                                                                                              
 │  │                     │          │         │                    │ │                                                                                                              
-│  │                     │       ┌──▼──┐  ┌──▼──┐  ┌──────┐     │ │                                                                                                                 
+│  │                     │       ┌──▼──┐  ┌──▼──┐  ┌──────┐        │ │                                                                                                                 
 │  │                     │       │Stripe│  │Braint│  │PayPal│     │ │                                                                                                               
 │  │                     │       │      │  │ree   │  │      │     │ │
 │  │                     │       └──────┘  └──────┘  └──────┘     │ │                                                                                                               
@@ -667,15 +667,15 @@ The most complex transactional flow. Multiple services must coordinate.
 │  │                     ▼                                         │ │                                                                                                              
 │  │              Payment Ledger                                   │ │                                                                                                              
 │  │              (PostgreSQL)                                     │ │                                                                                                              
-│  │                                                                │ │
-│  │  Ledger records every state transition:                       │ │                                                                                                              
+│  │                                                               │ │
+│  │  Ledger records every state transition:                      │ │                                                                                                              
 │  │    payment_id | order_id | state       | amount | provider   │ │                                                                                                               
-│  │    ─────────────────────────────────────────────────────────  │ │                                                                                                              
+│  │    ───────────────────────────────────────────────────────── │ │                                                                                                              
 │  │    pay_001    | ord_123  | AUTH_PENDING | $50.00 | stripe    │ │                                                                                                               
 │  │    pay_001    | ord_123  | AUTHORIZED   | $50.00 | stripe    │ │                                                                                                               
 │  │    pay_001    | ord_123  | CAPTURE_PEND | $50.00 | stripe    │ │                                                                                                               
 │  │    pay_001    | ord_123  | CAPTURED     | $50.00 | stripe    │ │                                                                                                               
-│  │                                                                │ │                                                                                                             
+│  │                                                              │ │                                                                                                             
 │  │  Append-only. Never update. Full audit trail.                │ │
 │  └──────────────────────────────────────────────────────────────┘ │                                                                                                               
 │                                                                    │
@@ -695,7 +695,7 @@ The most complex transactional flow. Multiple services must coordinate.
 │      • Auth without capture (should have captured or voided)      │                                                                                                               
 │      • Capture without order (orphaned charge)                    │                                                                                                               
 │      • Amount mismatch (rounding, currency conversion)            │
-│    Route flagged items to finance team.                            │                                                                                                              
+│    Route flagged items to finance team.                           │                                                                                                              
 └───────────────────────────────────────────────────────────────────┘
                                                                                                                                                                                       
 ---                                                                                                                                                                                 
@@ -721,7 +721,7 @@ The most complex transactional flow. Multiple services must coordinate.
 │  │  │ Shard 0    │ │ Shard 1    │ ... │ Shard 99   │           │ │                                                                                                                
 │  │  │ qty: 100   │ │ qty: 100   │     │ qty: 100   │           │ │                                                                                                                
 │  │  └────────────┘ └────────────┘     └────────────┘           │ │                                                                                                                
-│  │                                                                │ │                                                                                                             
+│  │                                                             │ │                                                                                                             
 │  │  Decrement: hash(request_id) % 100 → shard N                 │ │                                                                                                               
 │  │             UPDATE shard_N SET qty = qty - 1 WHERE qty > 0    │ │                                                                                                              
 │  │             If affected_rows = 0 → try next shard             │ │                                                                                                              
@@ -730,7 +730,7 @@ The most complex transactional flow. Multiple services must coordinate.
 │  │  Throughput: 100 shards × 1,000 TPS each = 100K TPS          │ │                                                                                                               
 │  │                                                                │ │                                                                                                             
 │  │  Rebalancing: when shards become uneven (shard 3 has 0,       │ │
-│  │  shard 7 has 50), a background job rebalances.                │ │                                                                                                              
+│  │  shard 7 has 50), a **background job rebalance**s.                │ │                                                                                                              
 │  └──────────────────────────────────────────────────────────────┘ │
 │                                                                    │                                                                                                              
 │  Multi-warehouse:                                                  │
@@ -743,7 +743,7 @@ The most complex transactional flow. Multiple services must coordinate.
 │  │  SKU-123│ WH-NJ    │ 300       │ 45       │ 1247            │ │                                                                                                                
 │  │  SKU-123│ WH-CA    │ 150       │ 22       │ 893             │ │                                                                                                                
 │  │  SKU-123│ WH-TX    │ 0         │ 0        │ 445             │ │                                                                                                                
-│  │                                                                │ │                                                                                                             
+│  │                                                             │ │                                                                                                             
 │  │  "In Stock" shown on product page = SUM(available) > 0       │ │                                                                                                               
 │  │  Pre-computed and cached. Updated via event on inventory      │ │                                                                                                              
 │  │  change. Never computed at read time.                         │ │                                                                                                              
@@ -833,13 +833,13 @@ If Notification Service is down for 10 minutes:
 Per-Service Database Selection
 
 ┌───────────────────────────────────────────────────────────────────────┐                                                                                                           
-│  SERVICE              DATABASE              WHY                        │
+│  SERVICE              DATABASE              WHY                       │
 │  ──────────────────────────────────────────────────────────────────── │                                                                                                           
 │  Product Catalog      PostgreSQL (write)    Relational integrity for  │
 │    (write model)      + DynamoDB (read)     complex product data.     │                                                                                                           
 │                                             DynamoDB for fast reads.  │                                                                                                           
 │                                                                       │                                                                                                           
-│  Cart                 DynamoDB              Key-value access pattern.  │                                                                                                          
+│  Cart                 DynamoDB              Key-value access pattern. │                                                                                                          
 │                                             Single-digit ms latency.  │                                                                                                           
 │                                             TTL for auto-cleanup.     │                                                                                                           
 │                                                                       │                                                                                                           
@@ -1078,15 +1078,15 @@ downstream services don't know time has run out.
 │                                                                      │                                                                                                            
 │  ┌──────────────────────────────────────────────────────────────┐   │                                                                                                             
 │  │  REGION-SPECIFIC (different data per region)                  │   │                                                                                                            
-│  │                                                                │   │                                                                                                           
+│  │                                                               │   │                                                                                                           
 │  │  • Pricing (different prices per country)                     │   │
-│  │  • Tax rules (US tax ≠ EU VAT ≠ India GST)                   │   │                                                                                                             
+│  │  • Tax rules (US tax ≠ EU VAT ≠ India GST)                    │   │                                                                                                             
 │  │  • Shipping options (regional carriers)                       │   │                                                                                                            
 │  │  • Legal compliance (GDPR in EU, PDPA in India)               │   │                                                                                                            
-│  │  • Payment methods (UPI in India, iDEAL in NL, PIX in BR)    │   │                                                                                                             
-│  │                                                                │   │                                                                                                           
+│  │  • Payment methods (UPI in India, iDEAL in NL, PIX in BR)     │   │                                                                                                             
+│  │                                                               │   │                                                                                                           
 │  │  This data is not replicated — it's authored per region.      │   │                                                                                                            
-│  └──────────────────────────────────────────────────────────────┘   │                                                                                                             
+│  └──────────────────────────────────────────────────────────────┘    │                                                                                                             
 │                                                                      │                                                                                                            
 │  FAILOVER:                                                           │                                                                                                            
 │                                                                      │                                                                                                            
@@ -1252,28 +1252,28 @@ downstream services don't know time has run out.
 12. Security Architecture
 
 ┌──────────────────────────────────────────────────────────────────────┐
-│  SECURITY LAYERS                                                      │
-│                                                                       │                                                                                                           
-│  EDGE:                                                                │
+│  SECURITY LAYERS                                                     │
+│                                                                      │                                                                                                           
+│  EDGE:                                                               │
 │    • WAF (SQL injection, XSS, path traversal filtering)              │                                                                                                            
 │    • DDoS mitigation (rate limiting per IP, CAPTCHA for bots)        │                                                                                                            
 │    • TLS 1.3 termination at CDN/load balancer                        │                                                                                                            
 │    • Bot detection (device fingerprinting, behavioral analysis)      │                                                                                                            
-│                                                                       │                                                                                                           
-│  API GATEWAY:                                                         │
+│                                                                      │                                                                                                           
+│  API GATEWAY:                                                        │
 │    • JWT validation (RS256, short-lived: 15 min)                     │                                                                                                            
 │    • OAuth 2.0 scopes per endpoint                                   │                                                                                                            
 │    • Rate limiting per customer/API key                              │                                                                                                            
 │    • Request size limits (prevent payload bombs)                     │                                                                                                            
 │    • Input validation (schema enforcement)                           │                                                                                                            
-│                                                                       │
-│  SERVICE MESH:                                                        │                                                                                                           
+│                                                                      │
+│  SERVICE MESH:                                                       │                                                                                                           
 │    • mTLS between all services (zero-trust network)                  │                                                                                                            
 │    • Service-to-service authorization (RBAC)                         │
 │      Payment Service can call Stripe. Catalog Service cannot.        │                                                                                                            
 │    • Certificate rotation: automated, no downtime                    │                                                                                                            
-│                                                                       │                                                                                                           
-│  DATA:                                                                │                                                                                                           
+│                                                                      │                                                                                                           
+│  DATA:                                                               │                                                                                                           
 │    • PII encryption at rest (AES-256)                                │                                                                                                            
 │    • PII encryption in transit (TLS 1.3)                             │                                                                                                            
 │    • Payment data: tokenized via payment gateway                     │
@@ -1281,20 +1281,20 @@ downstream services don't know time has run out.
 │    • Column-level encryption for SSN, DOB (if stored)                │
 │    • Audit log: who accessed what PII, when, why                     │                                                                                                            
 │    • Data retention policies: auto-delete PII after N years          │                                                                                                            
-│                                                                       │                                                                                                           
-│  SECRETS:                                                             │                                                                                                           
+│                                                                      │                                                                                                           
+│  SECRETS:                                                            │                                                                                                           
 │    • All secrets in Vault (HashiCorp) or AWS Secrets Manager         │                                                                                                            
 │    • Dynamic secrets for database credentials                        │                                                                                                            
 │      (rotated every 24 hours, never in config files)                 │
 │    • No secrets in environment variables, Docker images, or git      │                                                                                                            
-│                                                                       │                                                                                                           
-│  FRAUD:                                                               │                                                                                                           
+│                                                                      │                                                                                                           
+│  FRAUD:                                                              │                                                                                                           
 │    • ML model scores every transaction (feature vector:              │                                                                                                            
 │      device fingerprint, IP geolocation, purchase history,           │                                                                                                            
 │      shipping/billing address mismatch, order velocity)              │
 │    • High-risk orders: hold for manual review                        │                                                                                                            
 │    • Known-bad actors: block at edge (IP/device block list)          │                                                                                                            
-│    • Address verification (AVS) + 3D Secure for cards               │                                                                                                             
+│    • Address verification (AVS) + 3D Secure for cards                │                                                                                                             
 └──────────────────────────────────────────────────────────────────────┘
                                                                                                                                                                                       
 ---                                                                                                                                                                                 
@@ -1395,7 +1395,7 @@ Summary: Why Each Decision
 ┌────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │              Decision              │                                                   Reason                                                   │                                 
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Cell-based architecture            │ **Blast radius containment**. Cell failure affects ≤5% of customers.                                           │
+│ Cell-based architecture            │ **Blast radius containment**. Cell failure affects ≤5% of customers.                                       │
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Shuffle sharding                   │ Correlated failure affects even fewer. Two-cell failure ≈ 0.5%.                                            │                                 
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤                                 
@@ -1403,7 +1403,7 @@ Summary: Why Each Decision
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤                                 
 │ CQRS (separate read/write stores)  │ **10,000:1 read/write ratio. Optimize each path independently**.                                           │
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤                                 
-│ DynamoDB for cart/sessions         │ Predictable single-digit ms latency at any scale. No connection pool drama.                                │
+│ DynamoDB for cart/sessions         │ Predictable **single-digit ms latency** at any scale. No connection pool drama.                            │
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤                                 
 │ PostgreSQL for orders/payments     │ ACID transactions for money movement. Auditable. Relational queries for support tools.                     │
 ├────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤                                 

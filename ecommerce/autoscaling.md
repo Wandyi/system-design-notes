@@ -80,7 +80,7 @@ Key config:
 ### 3.2 Vertical Pod Autoscaler (VPA)
 
 Adjusts CPU/memory *requests* based on observed usage. Useful for right-sizing during normal load, not for spike response (VPA restarts pods to apply new sizing). 
-Don't use VPA for checkout-path services at peak — pod restarts drop in-flight requests.
+**Don't use VPA for checkout-path services at peak — pod restarts drop in-flight requests.**
 
 Common pattern: VPA in `recommendationOnly` mode during development; switch to `auto` for non-critical backends; leave off for critical paths.
 

@@ -1,8 +1,7 @@
 
 Cart storage at scale. 10M active carts, most abandoned. If stored in a database, that's significant write load for data that's 90% disposable. If stored in Redis, a    
 node failure                                                                                                                                                             
-loses active carts mid-checkout. If stored client-side (cookie/localStorage), you can't enforce server-side invariants (price, stock).                                 
-⎿  ⧉ Selected 2 lines from systemDesign/ecommerce/ecommerceCornerCases.md in GoLand
+loses active carts mid-checkout. If stored client-side (cookie/localStorage), you can't enforce server-side invariants (price, stock).
 
 ⏺ Cart Storage at Scale — Deep Dive
 
@@ -264,7 +263,7 @@ No single storage layer works. Production systems use a tiered approach where th
 
       ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
       │   BROWSING   │───→│   ENGAGED    │───→│  CHECKOUT    │
-      │  (cold cart)  │    │ (warm cart)   │    │ (hot cart)    │
+      │  (cold cart) │    │ (warm cart)  │    │ (hot cart)   │
       └──────────────┘    └──────────────┘    └──────────────┘
 
       Add first item       Add 2+ items /       Click "Checkout"

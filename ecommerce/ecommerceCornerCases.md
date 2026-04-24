@@ -26,9 +26,9 @@ Corner cases:
   out-of-stock. Lost sales for an item that's physically on the shelf.
 - [low]Pre-order / backorder inventory. You sell 500 units of a pre-order item with an expected restock date. Supplier delivers only 300. Now you have 200 confirmed orders you can't
   fulfill. Which 200 do you cancel? FIFO? Loyalty tier? This is a business logic problem with distributed data dependencies.
-- Bundle inventory. A bundle contains items A, B, C. Item A has 2 left, B has 100, C has 50. The bundle is limited to 2 — but nothing prevents someone from buying item A
+- [low]Bundle inventory. A bundle contains items A, B, C. Item A has 2 left, B has 100, C has 50. The bundle is limited to 2 — but nothing prevents someone from buying item A
   individually while a bundle order is in flight. A is now at 0 and the bundle can't be fulfilled.
-- Inventory count drift. Systems accumulate rounding errors, missed events, and edge cases. After 6 months, the database says SKU-456 has 47 units but the warehouse physically has
+- [low]Inventory count drift. Systems accumulate rounding errors, missed events, and edge cases. After 6 months, the database says SKU-456 has 47 units but the warehouse physically has
 43. Without periodic reconciliation (cycle counts), you oversell 4 units.
 
   ---
@@ -98,7 +98,7 @@ Corner cases:
   vs. miss). Users comparing notes on social media see different prices — trust erosion.
 - Category tree inconsistency. Category "Electronics > Phones > Android" is restructured to "Electronics > Mobile > Android." During the migration, some products point to the old
   category path, some to the new. Search facets show both. Breadcrumbs are broken.
-- Variant explosion. A T-shirt with 5 sizes × 8 colors × 3 fits = 120 variants. A configurable laptop with 4 CPUs × 3 RAM × 3 storage × 2 displays = 72 variants. Each variant has
+- [done] Variant explosion. A T-shirt with 5 sizes × 8 colors × 3 fits = 120 variants. A configurable laptop with 4 CPUs × 3 RAM × 3 storage × 2 displays = 72 variants. Each variant has
   its own inventory, price, and images. Catalog queries that join product → variant → inventory become expensive. At 1M products × 100 variants, that's 100M rows.
 - Search relevance vs. inventory. Customer searches "blue running shoes." The most relevant result is out of stock. Do you show it (relevant but frustrating), hide it (less
   frustrating but the search results seem worse), or show it grayed out (more UI complexity, requires real-time inventory check per search result — expensive)?

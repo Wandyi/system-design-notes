@@ -100,11 +100,13 @@ ALTER TABLE orders_2026_11_27 SET (
 
 ### 2.5 Replication lag
 
-Every WAL record must be shipped to replicas. If the primary is writing faster than the replica can apply, lag grows. A replica 30 minutes behind during checkout means any read-after-write flow that hit the replica reads pre-order state.
+Every WAL record must be shipped to replicas. If the primary is writing faster than the replica can apply, lag grows. 
+A replica 30 minutes behind during checkout means any read-after-write flow that hit the replica reads pre-order state.
 
 ### 2.6 Connection pool exhaustion
 
-At 10× concurrency (users refreshing order-pending pages during outages), the pool fills up. Each connection waits on a lock or an IO. New requests queue; queue length grows; customer-facing latency spikes; some users retry; cascade.
+At 10× concurrency (users refreshing order-pending pages during outages), the pool fills up. Each connection waits on a lock or an IO. 
+New requests queue; queue length grows; customer-facing latency spikes; some users retry; cascade.
 
 ---
 
@@ -155,7 +157,8 @@ This is the "cheap" answer that buys you 10-30x write headroom with modest code 
 
 A single Postgres instance tops out at some write rate (hardware-dependent, typically 20-100K commits/sec for OLTP with durability on). Past that, you need multiple nodes.
 
-**Citus / Postgres sharding extensions:** distributes tables across nodes by shard key. **Co-locate tables that are joined** (orders + order_lines, both sharded by `customer_id` or `order_id`, land on the same node). Cross-shard queries are supported but expensive.
+**Citus / Postgres sharding extensions:** distributes tables across nodes by shard key. **Co-locate tables that are joined** (orders + order_lines, both sharded by `customer_id` or `order_id`, land on the same node). 
+Cross-shard queries are supported but expensive.
 
 **Application-level sharding:** your service computes `shard = hash(customer_id) % N` and routes to shard N. Most mature; most operational work. Each shard is an independent Postgres; failover, backup, schema migrations must be orchestrated across all shards.
 
@@ -166,7 +169,7 @@ This is the one architectural answer that *automatically* handles the Black Frid
 Choose based on throughput requirement and organizational maturity:
 - < 30K writes/sec: single beefy Postgres + sub-partitioning. Don't shard.
 - 30K-200K writes/sec: Citus or app-level sharding.
-- > 200K writes/sec: distributed-native DB with automatic range splitting.
+- > 200K writes/sec: distributed-native DB with automatic range splitting-> **COCKROACHDB_RANGE_SPLIT_THRESHOLD**.
 
 ### 3.3 Write buffering — decouple application throughput from DB throughput
 
@@ -295,7 +298,8 @@ Operationally, you can dodge 80% of the pain by preparing before peak:
 
 The day's partition flips at 00:00. A transaction that started at 23:59:58 and commits at 00:00:02 — which partition does its row go in?
 
-Postgres: the partition is determined by the *value* of `created_date` in the row, not the commit time. If the app sets `created_at = NOW()` *inside the transaction*, NOW() is transaction-start time — 23:59:58 — so the row lands in the "today" partition even though it commits tomorrow. Consistent.
+Postgres: the partition is determined by the *value* of `created_date` in the row, not the commit time. If the app sets `created_at = NOW()` *inside the transaction*, 
+NOW() is transaction-start time — 23:59:58 — so the row lands in the "today" partition even though it commits tomorrow. Consistent.
 
 The trap: if `created_at` is set by the *client* (timestamp sent from app server), clock skew between app and DB can put an order into the wrong partition. 
 Best practice: use DB `DEFAULT now()` for `created_at`, not app-supplied values. Ensures partitioning truth and DB truth agree.
@@ -363,10 +367,11 @@ Run a bloat query (`pgstattuple`, or an approximation query) across all partitio
 `log_autovacuum_min_duration = 0` to log every autovacuum run. Dashboard: time between vacuums per partition, duration of each vacuum. If time-between is growing (autovacuum falling behind), alert.
 
 **Replication lag per partition — tricky**
-Physical replication doesn't work per-partition. But you can add logical replication per partition group (e.g., a publication for orders_2026_11_*) and track lag independently.
+Physical replication doesn't work per-partition. But you can **add logical replication per partition group** (e.g., a publication for orders_2026_11_*) and track lag independently.
 
 **Planner partition pruning**
-`EXPLAIN (analyze, verbose)` on hot queries to confirm partition pruning is active. Regressions happen when someone writes `WHERE created_date::text LIKE '2026-11-%'` — the cast defeats pruning. Alert on planner metrics showing "all partitions scanned" for OLTP queries.
+`EXPLAIN (analyze, verbose)` on hot queries to confirm partition pruning is active. Regressions happen when someone writes `WHERE created_date::text LIKE '2026-11-%'` — the cast defeats pruning. 
+Alert on planner metrics showing "all partitions scanned" for OLTP queries.
 
 ---
 
