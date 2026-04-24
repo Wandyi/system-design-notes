@@ -221,6 +221,241 @@ Edge ingestion → Kafka (cheap, massive throughput, retention)
 
 ---
 
+## 3.1 Combo 7 Deep Dive — Uber-Scale Three-Tier (Kafka + Pulsar + Redis)
+
+> Uber publicly operates one of the largest Kafka fleets on the planet (~trillions of messages/day across 100+ clusters), contributed uReplicator (cross-DC mirror) to open source, built and then migrated large parts of eventing to Apache Pulsar for multi-tenancy/geo-replication, and uses Redis pervasively as the hot-path serving tier for dispatch, geospatial indexing, and rate limiting. This section spells out **why all three exist together**, **who owns what**, and **how a trip event flows through the tiers**.
+
+### 3.1.1 Scale profile (Uber-like, order-of-magnitude)
+
+| Dimension | Typical value |
+|---|---|
+| Active riders + drivers | ~130M monthly |
+| Trips/day | 25–30M |
+| Driver location pings | **~4s cadence per on-duty driver → ~1–5M pings/sec globally at peak** |
+| Raw events ingested | trillions/day across Kafka |
+| Core microservices | 4,000+ |
+| Regions (DCs) | 2 primary + multiple edge PoPs, active-active with per-city affinity |
+| Dispatch p99 latency budget | < 500 ms end-to-end (rider request → driver offer) |
+| Pricing decision latency | < 100 ms |
+| Ride state serving (Redis) | p99 < 5 ms |
+
+No single broker family satisfies all of: **cheap durable retention for analytics** (Kafka wins) + **geo-replicated multi-tenant routing with per-city isolation** (Pulsar wins) + **sub-ms hot-path serving** (Redis wins). The three-tier layering is a pragmatic response to this.
+
+### 3.1.2 Tier responsibilities and why each is chosen
+
+#### Tier 1 — Kafka as the durable "event firehose"
+
+**What lands here**
+- Every domain event from services: `trip.requested`, `trip.matched`, `trip.completed`, `driver.location_update`, `payment.authorized`, `surge.snapshot`, `eats.order.placed`, `safety.incident`, etc.
+- CDC streams from Postgres / MySQL / Schemaless (Uber's in-house layered datastore) via Debezium / custom CDC.
+- App logs / click events from riders & drivers.
+
+**Why Kafka, specifically**
+- **Retention + replay**: Uber retains events 3–14 days in hot Kafka and 90+ days in tiered storage (S3). ML training jobs, financial reconciliation, analytics, and bug investigations all replay from Kafka. No other tier gives you that for free.
+- **Sequential throughput per partition**: a single Kafka partition sustains 50–200 MB/s writes; partitioning by `city_id` or `user_id_hash` gives you near-linear horizontal scale.
+- **Producer economics**: Kafka's append-only log + batched acks + zero-copy sendfile make it the cheapest $/event at these volumes.
+- **Tight Flink integration**: Uber's stream processing (internal AthenaX / Flink) operates on Kafka topics natively with exactly-once semantics via transactional producer + Flink checkpoints.
+
+**Critical Kafka-at-Uber patterns**
+- **uReplicator** (Uber's MirrorMaker replacement): cross-DC replication with stable partition assignment, which regular MM2 didn't give at their scale.
+- **Dead letter topics** per consumer group: consumers that fail 3× move poison messages to `<topic>.dlq` for investigation without blocking the main stream.
+- **Topic tiering**: "hot" topics (60 min retention, SSD) for near-real-time consumers, "cold" topics (14 day retention, HDD) for analytics.
+- **Per-topic compaction** for CDC streams that represent "current state of entity" rather than event log (e.g., `driver.profile.updates`).
+
+#### Tier 2 — Pulsar as the multi-tenant, geo-replicated routing fabric
+
+**What lands here**
+- Events that need **per-tenant isolation**: per-city dispatch streams, per-business-unit (rides / Eats / freight) queues, per-product flows.
+- Cross-DC replicated events where **consumer-side geo-locality matters**: a Seattle dispatcher should consume Seattle events from a local broker, not pull from a far-away DC.
+- Work queues with per-key ordering requirements where Kafka's partition-count-equals-max-parallelism is too rigid.
+
+**Why Pulsar, specifically, and not more Kafka**
+- **Multi-tenancy native**: Pulsar has tenants → namespaces → topics as first-class concepts, with per-namespace quotas, auth, rate limits. Uber's internal platform team exposes namespaces to product teams who self-service without fleet-admin involvement. Doing this cleanly in Kafka (ACLs + topic prefixes + quotas) is possible but operationally heavier.
+- **Broker-storage separation (BookKeeper)**: Pulsar brokers are stateless; adding broker capacity is instantaneous (no data rebalance). Compare Kafka: adding a broker means reassigning partitions, which moves TB/s of data and stalls consumers. At Uber's growth rate, broker elasticity matters.
+- **Geo-replication** as a first-class feature: you declare a topic replicated across 3 clusters; Pulsar handles it. uReplicator works but is bolt-on. Pulsar's replication is bi-directional and conflict-aware via cluster IDs embedded in MessageId.
+- **Subscription models**: Pulsar offers Shared, Failover, Key_Shared, Exclusive subscriptions. Uber dispatch uses **Key_Shared** to guarantee per-driver ordering across multiple consumer instances without being bound to partition count. Kafka forces one consumer per partition; Pulsar lets 100 consumers process one topic with key-level ordering.
+- **Per-message TTL and individual ack**: rides state events where an old event becomes irrelevant after 30s benefit from TTL without retention-period tricks.
+- **Functions**: lightweight transforms (unit conversion, PII redaction) run inside Pulsar brokers without a separate Flink cluster.
+
+**Why not just Kafka everywhere**
+- Uber tried. Kafka partition counts exploded (1M+ partitions globally); operational pain in rebalancing dwarfs Pulsar's.
+- Multi-tenancy in Kafka required building a rats-nest of prefix conventions + quota enforcement + ACL generation.
+
+#### Tier 3 — Redis as the sub-ms hot-path
+
+**What lands here**
+- **Driver location GEO index**: `GEOADD driver_positions lon lat driver_id` → dispatch queries with `GEOSEARCH FROMLONLAT ... BYRADIUS 500 m` in p99 < 3 ms.
+- **Trip state cache**: `trip:{trip_id}` hash with rider, driver, status, pickup, surge multiplier — read on every rider refresh.
+- **Surge pricing lookup**: `surge:{city_id}:{hex_id}` → current multiplier; TTL-based invalidation.
+- **Rate limiters**: per-user, per-endpoint token buckets using `INCRBY` + TTL, or sliding window via `ZADD`+`ZREMRANGEBYSCORE`.
+- **Feature flag & A/B bucket assignment**: computed once, cached per user/session.
+- **Notification fan-out queues**: per-device push queues consumed by notification workers.
+- **Idempotency keys** for payment and order submission: `SETNX request_id:{uuid} 1 EX 86400`.
+
+**Why Redis, specifically**
+- **Latency**: in-memory + single-threaded data-path + pipelining → p50 < 500 μs within a DC.
+- **Data structures**: hashes, sorted sets, streams, HyperLogLog, GEO — each perfectly matches a hot-path pattern Kafka/Pulsar would force you to recompute.
+- **Cluster-mode sharding**: hash-slot sharding across 100s of nodes with client-side routing.
+- **Lua scripts** for atomic compound operations (e.g., "reserve a driver if still available"): avoids round-trip races.
+- **Redis Streams** (used sparingly): for short-lived work queues where the full Kafka/Pulsar overhead isn't warranted.
+
+**What Redis is NOT**
+- **Not durable-by-default**. Uber-scale deployments use AOF + replicas + periodic snapshots, but treat Redis as a **cache and hot serving layer rebuildable from Kafka/Pulsar**, not the source of truth.
+- **Not a queue** for durable work (use Kafka/Pulsar). Redis Streams fills specific niches but isn't the backbone.
+
+### 3.1.3 End-to-end data flow — a single trip lifecycle
+
+Let's trace an actual trip, hop by hop, showing why each tier is touched:
+
+```
+ [Rider taps "Request"]
+         │ HTTPS
+         ▼
+  Rider Gateway (stateless)
+         │
+         │ ① Write  trip.requested  → Kafka (topic=trips.events, key=trip_id)
+         ▼
+ Kafka cluster (per-region)
+         │
+         ├─► ② Flink job  "demand-aggregator"
+         │        - windowed count of requests per hex
+         │        - writes surge_multiplier snapshot
+         │        - publishes to Pulsar topic  pricing.surge.snapshots  (geo-replicated)
+         │
+         ├─► ③ Flink job  "dispatch-feeder"
+         │        - joins  trip.requested  with  driver.location_updates
+         │        - finds candidate drivers near pickup hex
+         │        - writes to Redis:  GEOSEARCH  against driver_positions
+         │        - publishes  trip.dispatch.candidates  → Pulsar (Key_Shared on trip_id)
+         │
+         └─► ④ CDC consumers
+                  - audit / finance / ML feature store
+                  - S3 tiered dump (nightly)
+
+ Pulsar (multi-tenant routing)
+         │
+         ├─► ⑤ Dispatch service (1 consumer group per region)
+         │        - reads trip.dispatch.candidates via Key_Shared on trip_id
+         │        - consults Redis:
+         │              - surge:{city}:{hex}   → current multiplier
+         │              - driver:{driver_id}   → eligibility, rating, vehicle
+         │        - picks winning driver
+         │        - atomic  LUA SCRIPT  to reserve driver in Redis
+         │               IF driver.status == "available" THEN SET driver.status="offered"; ELSE NULL
+         │        - publishes  trip.matched  → Kafka (loops back)
+         │
+         └─► ⑥ Driver app push (via Notifications service)
+                  - Redis queue  push:{driver_id}  → notif worker → APNS/FCM
+
+ [Driver accepts]  (arrives as event on Kafka trip.accepted)
+         │
+         │  State transitions update  trip:{trip_id}  in Redis (fast read for rider/driver apps).
+         │
+         │  Ongoing location updates from driver phone:
+         │     Driver app ─► Gateway ─► Kafka (driver.location_updates)
+         │                                   │
+         │                                   ├─► Flink "geo-index" → Redis GEOADD (continuous)
+         │                                   └─► Flink "eta-updater" → Pulsar (per-city)
+         │                                                              └─► Rider app via websocket
+         ▼
+ [Trip completes]
+         │
+         │  trip.completed → Kafka
+         │       ├─► Payments service (reads, charges card, writes payment.authorized → Kafka)
+         │       ├─► Receipts / email (consumer of Kafka)
+         │       ├─► Ratings pipeline
+         │       ├─► Fraud detection (Flink over Kafka + feature store)
+         │       └─► Redis invalidation:  DEL trip:{trip_id}  (after short grace period)
+```
+
+**Why this works at Uber scale**
+1. Kafka is the **write-once source of truth** — one event, many consumers, no producer coordination.
+2. Pulsar handles the **fan-out with geo-affinity and per-trip ordering** that Kafka's partition model makes clumsy at this cardinality.
+3. Redis handles the **synchronous read-path** (dispatch querying "nearest drivers") where every millisecond is measurable user-facing delay.
+4. The rider and driver apps never connect to any of these directly — all access mediated by stateless gateway / service layers.
+
+### 3.1.4 Specific design knobs per tier
+
+#### Kafka
+- **Partitioning key**: `city_id` for trip events, `driver_id` for location updates, `user_id` for rider sessions. Prevents hot NYC partition by pre-hashing city × spatial-bucket for the largest cities.
+- **Producer acks**: `acks=all`, `min.insync.replicas=2`, idempotent producer ID. No message loss on broker crash.
+- **Compression**: `zstd` on high-volume topics (location updates); 3–5× smaller than snappy.
+- **Retention tiering**: hot topics 2 h on SSD for Flink; promoted to cold 14 d on HDD; then S3 via Kafka tiered storage.
+- **Consumer lag alerts**: per-consumer-group lag > 60 s triggers PagerDuty; Uber's Chaperone tool tracks end-to-end completeness.
+- **DLQ pattern**: `<topic>.dlq` auto-provisioned; consumer retry count in headers; after N retries, shipped to DLQ + Prometheus alert.
+
+#### Pulsar
+- **Geo-replication**: each tenant namespace declared with replication policy `[us-east, us-west, eu-west]`. Publish-side async; read-side local.
+- **Subscription types by use case**:
+  - **Key_Shared** for dispatch → per-trip ordering with horizontal consumer scale.
+  - **Failover** for leader-only workloads (surge calculator) → automatic HA.
+  - **Shared** for stateless work queues (notification fan-out).
+- **Tiered storage**: broker keeps 1–4 h in BookKeeper; older offloaded to S3. Reads transparently paged back.
+- **Per-topic quotas**: backlog quota caps a single namespace's growth so one misbehaving team can't blow out the cluster.
+- **Functions for transforms**: PII redaction before cross-region replication, schema projection for backward-compat.
+
+#### Redis
+- **Cluster-mode** with ~256–512 hash slots per shard, 100+ shards per region for dispatch.
+- **Replica per shard** + **AOF `appendfsync everysec`** (compromise: 1 s data loss window vs throughput).
+- **Client-side sharding hints** via hash tags: keys like `{trip_id}:state` and `{trip_id}:driver` co-locate on the same shard for atomic Lua access.
+- **Pipelining**: dispatch service batches 50+ Redis ops into one round-trip.
+- **Connection pool per service** with per-shard pools to prevent head-of-line blocking on a slow shard.
+- **Eviction policy**: `allkeys-lfu` on cache-only namespaces; `noeviction` with explicit TTL on ride-state (alarm on OOM).
+- **Geo-partitioning**: one Redis cluster per region; cross-region state reconciled via Kafka.
+
+### 3.1.5 Why not fewer tiers?
+
+| Hypothetical | Why it fails at Uber scale |
+|---|---|
+| **Kafka only** | Dispatch read-path needs sub-ms GEO lookup — Kafka can't serve that. Per-city isolation without 1M+ partitions fails operationally. |
+| **Pulsar only** | Analytics teams want cheap, long-retention log with Flink native integration. Pulsar's tiered storage works but the ecosystem for batch + ML training is weaker than Kafka + S3 + Spark/Flink. |
+| **Redis only** | No durable replay. A Redis fleet wipe = data loss. Can't feed ML training. 1 TB in Redis = $$$; 1 TB in Kafka tiered to S3 = cents/month. |
+| **Kafka + Redis, no Pulsar** | Multi-tenancy and geo-replication at city-level become an engineering drag; every new product team hits Kafka-admin bottlenecks. This is where Uber historically was, and why they moved to Pulsar. |
+| **Pulsar + Redis, no Kafka** | Retention economics + existing Flink / Spark pipelines make Kafka the cheaper long-tail log. Rewriting the entire analytics stack to read from Pulsar is a multi-year cost. |
+
+Conclusion: **each layer earns its keep on a different axis** (retention cost / multi-tenant routing / latency). Drop any one and either an SLO or a cost line blows up.
+
+### 3.1.6 Integration points that demand discipline
+
+- **Schema registry federation**: all three tiers share a schema registry (or at least a synchronized view). A `trip.matched` event must have the same Avro/Protobuf shape whether read from Kafka, Pulsar, or after being projected into Redis.
+- **Idempotency keys travel through all tiers**: `request_id` is set at the gateway and stamped into every downstream event. Consumers dedupe on `(request_id, event_type)` everywhere.
+- **Clock discipline**: all events carry `event_time` (producer-assigned, NTP/PTP synced) + `ingest_time` (set by the first broker). Windowed joins use event_time; SLO monitoring uses ingest_time.
+- **Backpressure contracts**: the hot path (dispatch) MUST NOT get stuck behind the cold path (analytics). Separate consumer groups; separate broker clusters per tier per SLO class.
+- **Contract tests on topics**: producer and consumer teams own schemas jointly; CI verifies both sides against the registry.
+
+### 3.1.7 Failure scenarios across tiers
+
+| Failure | Effect if unmitigated | Mitigation in this three-tier design |
+|---|---|---|
+| Kafka broker crash | Producers buffer; consumers catch up on restart | `acks=all, min.isr=2`; rolling broker replacement; uReplicator to secondary DC. |
+| Redis shard failover (30–90 s) | Dispatch reads fail → no matches | Redis Sentinel/Cluster auto-promotes replica; dispatch service falls back to Kafka-sourced snapshot topic for 60 s; surge/ride state degrades gracefully. |
+| Pulsar geo-replication stall | Cross-region events delayed | Per-region service still functional from local Kafka; alarm at replication lag > 30 s; replay from Kafka to Pulsar on recovery. |
+| Hot-city partition (NYC 10× normal) | Partition saturates | Pre-hash `city_id × hex_bucket` keying; Pulsar Key_Shared subscription absorbs with horizontal consumers; Redis cluster scaled per-region. |
+| Producer dedupe broken (idempotency header lost) | Double-writes → double-charges | Gateway mints `request_id` at ingress; payment service checks Redis SETNX on `request_id` before auth; double-charge gate. |
+| Flink job failure between Kafka→Redis | Redis stale; dispatch uses old locations | Lag-based staleness detector; dispatch rejects matches against drivers whose last_seen_ms > 15s; Flink auto-restarts from last checkpoint. |
+| Cross-region outage (one DC dead) | City loses dispatch | Active-active topology: each city primarily served by nearest DC; failover to second DC via DNS + Pulsar's local reader; Redis rebuilt from Kafka on promoted DC in minutes. |
+| Schema drift on `trip.matched` | Downstream consumers throw | Schema Registry compatibility mode = BACKWARD; producers must run CI against it; breaking change requires new event type or topic version. |
+| Redis OOM under surge | Evictions cause dispatch cache miss storm → Kafka topic over-read | Capacity headroom 30%+; `noeviction` on critical namespaces; pre-warming on scale-out; rate-limit consumers of Kafka ride-state backfill. |
+| Consumer lag explosion on a Kafka topic | Hot path blocked | Consumer group split (more instances); topic repartition if CPU-bound; DLQ routes poison messages; autoscaler on lag metric. |
+
+### 3.1.8 Operational footprint — what it actually costs
+
+- **Team ownership**: at this scale there is a dedicated **Streaming Platform team** (~20–60 engineers) operating Kafka + Pulsar + Flink + schema registry + observability; a separate **Cache Platform team** (~10–20) operates Redis + failover tooling.
+- **Cross-cutting tooling**: Chaperone (Uber's stream completeness tool), uReplicator, Heraldry/Managed Kafka SaaS layer, internal Pulsar control plane, Redis Sentinel + custom failover orchestrator.
+- **Observability**: per-hop lag metrics (Kafka lag, Pulsar backlog, Redis latency p99), end-to-end event tracing via trace IDs, per-consumer-group SLO dashboards.
+- **Cost**: a single-tier Kafka-only design would be cheaper per GB in raw storage but far more expensive per SLO — the three-tier split is justified because it lets each SLO class (analytics retention, cross-region fan-out, hot serving) be dimensioned and priced independently.
+
+### 3.1.9 When *not* to use this combo
+
+- You have < 50K msg/s → one Kafka cluster + a Redis cache is overwhelmingly simpler and meets everything. Pulsar operational cost isn't earned.
+- You don't have strict per-city/per-tenant isolation — a single Kafka cluster with good ACLs is fine.
+- You don't have sub-10ms read SLOs — skip Redis tier, read from a materialized Postgres/ScyllaDB read-replica.
+- You don't have multi-region customers — skip Pulsar's geo features; Kafka + MirrorMaker 2 is adequate.
+
+This combo is for platforms where **all three of (retention, multi-tenant geo-routing, sub-ms read) are load-bearing SLOs simultaneously**. Uber is the canonical example. LinkedIn's feed, Meta's ads serving, Netflix's playback pipeline are cousins.
+
+---
+
 ## 4. Scenario Catalog
 
 ### Scenario 1: IoT telemetry at 10M events/sec
