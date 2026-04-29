@@ -109,37 +109,36 @@ Storage:
                  │                         │
                  │  HTTPS/WSS              │  HTTPS/WSS (GPS stream)
                  │                         │
-          ┌──────▼─────────────────────────▼──────┐
-          │           API Gateway / LB            │
-          │     (geo-routed to nearest cell)       │
-          └──┬─────┬─────┬──────┬──────┬──────┬───┘
-             │     │     │      │      │      │
+          ┌──────▼─────────────────────────▼─────┐
+          │           API Gateway / LB           │
+          │     (geo-routed to nearest cell)     │
+          └──┬─────┬────┬──────┬──────┬──────┬───┘
+             │     │    │      │      │      │
        ┌─────▼─┐ ┌─▼───┐│ ┌────▼───┐ ┌▼─────┐│
        │ Ride  │ │Trip ││ │Pricing │ │Pay-  ││
        │Request│ │Svc  ││ │Engine  │ │ments ││
        │ Svc   │ │     ││ │        │ │ Svc  ││
        └───┬───┘ └──┬──┘│ └────┬───┘ └──┬───┘│
            │        │   │      │        │    │
-     ┌─────▼────────▼───▼──────▼────────▼────▼────┐
-     │              Event Bus (Kafka)               │
-     └──┬────────┬────────┬────────┬────────┬──────┘
-        │        │        │        │        │
+     ┌─────▼────────▼───▼──────▼────────▼────▼───┐
+     │              Event Bus (Kafka)            │
+     └──┬────────┬────────┬───────┬────────┬─────┘
+        │        │        │       │        │
   ┌─────▼──┐ ┌───▼────┐ ┌─▼──────┐│   ┌────▼─────┐
   │Location│ │Dispatch│ │ ETA /  ││   │Analytics │
   │Service │ │/Match  │ │Routing ││   │Pipeline  │
   │        │ │Service │ │Service ││   │(Spark/   │
   │        │ │        │ │        ││   │ Flink)   │
   └───┬────┘ └───┬────┘ └───┬────┘│   └──────────┘
-      │          │           │     │
-  ┌───▼────┐ ┌───▼──────────▼─────▼───────────────┐
+      │          │          │     │
+  ┌───▼────┐ ┌───▼──────────▼─────▼─────────────────┐
   │GeoIndex│ │       Database Layer                 │
   │(In-Mem │ │                                      │
   │S2/Quad)│ │  PostgreSQL   Cassandra    Redis     │
   │        │ │  (trips,      (location    (caches,  │
   │        │ │   users,       history,    sessions, │
-  │        │ │   payments)    analytics)  geo-index) │
+  │        │ │   payments)    analytics)  geo-index)│
   └────────┘ └──────────────────────────────────────┘
-
                           │
                 ┌─────────▼──────────┐
                 │  Object Storage    │
@@ -423,7 +422,7 @@ Fare Lock:
        │                                            ▲
        ▼                                            │
   ┌──────────────┐                          ┌───────┴───────┐
-  │  Location    │  publish to Kafka        │  Notification  │
+  │  Location    │  publish to Kafka        │  Notification │
   │  Ingestion   │───────────────────┐      │  Service      │
   │  (stateless) │                   │      │  (WebSocket/  │
   └──────┬───────┘                   │      │   SSE push)   │
@@ -656,30 +655,30 @@ func (g *GeoIndex) FindNearest(lat, lng float64, radiusMeters float64,
 ### Why S2 Cells Over Other Options
 
 ```
-┌──────────────────┬──────────────┬───────────────────────────────────────┐
+┌──────────────────┬──────────────┬──────────────────────────────────────┐
 │ Approach         │ Update Cost  │ Query Cost    │ Issues               │
 ├──────────────────┼──────────────┼───────────────┼──────────────────────┤
-│ S2 Cells (Uber's │ O(1) hash   │ O(cells × k)  │ Best all-around.     │
-│ actual choice)   │ map update  │ ~50µs         │ Uniform cell sizes.  │
-│                  │ ~200ns      │               │ Hierarchical.        │
+│ S2 Cells (Uber's │ O(1) hash    │ O(cells × k)  │ Best all-around.     │
+│ actual choice)   │ map update   │ ~50µs         │ Uniform cell sizes.  │
+│                  │ ~200ns       │               │ Hierarchical.        │
 ├──────────────────┼──────────────┼───────────────┼──────────────────────┤
-│ Geohash          │ O(1) prefix │ O(cells × k)  │ Non-uniform cell     │
-│                  │ update      │ ~50µs         │ sizes near poles.    │
-│                  │             │               │ Edge discontinuities.│
+│ Geohash          │ O(1) prefix  │ O(cells × k)  │ Non-uniform cell     │
+│                  │ update       │ ~50µs         │ sizes near poles.    │
+│                  │              │               │ Edge discontinuities.│
 ├──────────────────┼──────────────┼───────────────┼──────────────────────┤
 │ Quadtree         │ O(log n)    │ O(log n + k)  │ Tree rebalancing     │
 │                  │ tree insert │ ~100µs        │ under high write     │
 │                  │ ~500ns      │               │ rate. Pointer chasing│
 │                  │             │               │ = cache unfriendly.  │
 ├──────────────────┼──────────────┼───────────────┼──────────────────────┤
-│ R-tree           │ O(log n)    │ O(log n + k)  │ Rebalancing is       │
-│ (PostGIS uses)   │ + rebalance │ ~200µs        │ expensive on updates.│
-│                  │ ~2µs        │               │ Designed for read-   │
-│                  │             │               │ heavy, not 750K w/s. │
+│ R-tree           │ O(log n)     │ O(log n + k)  │ **Rebalancing is       │
+│ (PostGIS uses)   │ + rebalance  │ ~200µs        │ expensive on updates.**│
+│                  │ ~2µs         │               │ Designed for read-   │
+│                  │              │               │ heavy, not 750K w/s. │
 ├──────────────────┼──────────────┼───────────────┼──────────────────────┤
-│ Brute force      │ O(1) update │ O(n) scan     │ n = 3M drivers →     │
-│ (scan all)       │             │ ~100ms        │ 100ms per query.     │
-│                  │             │               │ Doesn't scale.       │
+│ Brute force      │ O(1) update  │ O(n) scan     │ n = 3M drivers →     │
+│ (scan all)       │              │ ~100ms        │ 100ms per query.     │
+│                  │              │               │ Doesn't scale.       │
 └──────────────────┴──────────────┴───────────────┴──────────────────────┘
 ```
 
@@ -692,16 +691,16 @@ A single machine can hold all 3M drivers in memory:
 But for fault tolerance and locality, partition by city/region:
 
   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-  │ Location Service │  │ Location Service │  │ Location Service │
-  │ Instance A       │  │ Instance B       │  │ Instance C       │
-  │                  │  │                  │  │                  │
-  │ Cities:          │  │ Cities:          │  │ Cities:          │
-  │ New York         │  │ San Francisco    │  │ London           │
-  │ Boston           │  │ Los Angeles      │  │ Paris            │
-  │ Philadelphia     │  │ Seattle          │  │ Berlin           │
-  │                  │  │                  │  │                  │
-  │ Drivers: ~400K   │  │ Drivers: ~300K   │  │ Drivers: ~200K   │
-  │ Memory: ~80 MB   │  │ Memory: ~60 MB   │  │ Memory: ~40 MB   │
+  │ Location Service│  │ Location Service│  │ Location Service │
+  │ Instance A      │  │ Instance B      │  │ Instance C       │
+  │                 │  │                 │  │                  │
+  │ Cities:         │  │ Cities:         │  │ Cities:          │
+  │ New York        │  │ San Francisco   │  │ London           │
+  │ Boston          │  │ Los Angeles     │  │ Paris            │
+  │ Philadelphia    │  │ Seattle         │  │ Berlin           │
+  │                 │  │                 │  │                  │
+  │ Drivers: ~400K  │  │ Drivers: ~300K  │  │ Drivers: ~200K   │
+  │ Memory: ~80 MB  │  │ Memory: ~60 MB  │  │ Memory: ~40 MB   │
   └─────────────────┘  └─────────────────┘  └─────────────────┘
 
 Routing:
@@ -773,8 +772,8 @@ Step 5: Driver has 15 seconds to accept or reject
        accepted  rejected  timeout │
           │        │        │      ▼
           │        └────┬───┘  ┌───────────────┐
-          │             │      │ NO_DRIVERS     │
-          │             ▼      │ (notify rider) │
+          │             │      │ NO_DRIVERS    │
+          │             ▼      │ (notify rider)│
           │      try next      └───────────────┘
           │      driver
           │
@@ -823,9 +822,9 @@ Solution: Optimistic locking on driver status
 ## 9. Trip Lifecycle & State Machine
 
 ```
-┌───────────┐  rider requests   ┌───────────┐  driver matched  ┌─────────────────┐
-│  (start)  │─────────────────→│ MATCHING   │────────────────→│ DRIVER_ASSIGNED │
-└───────────┘                   └─────┬─────┘                  └────────┬────────┘
+┌───────────┐  rider requests   ┌───────────┐  driver matched ┌─────────────────┐
+│  (start)  │─────────────────→ │ MATCHING  │────────────────→│ DRIVER_ASSIGNED │
+└───────────┘                   └─────┬─────┘                 └────────┬────────┘
                                       │                                │
                                 rider cancels                   driver arrives
                                       │                                │
@@ -974,16 +973,16 @@ The routing engine must be FAST (< 20ms per query) and ACCURATE.
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│                   ETA / Routing Service                     │
-│                                                             │
+│                   ETA / Routing Service                    │
+│                                                            │
 │  ┌──────────────────┐    ┌─────────────────────┐           │
-│  │  Road Network    │    │  Real-Time Traffic   │           │
-│  │  Graph           │    │  Overlay             │           │
-│  │  (OSRM/Valhalla) │    │  (edge weights       │           │
-│  │                  │    │   updated every 2min) │           │
-│  │  Nodes: ~500M    │    │  From: GPS traces of  │           │
-│  │  Edges: ~1B      │    │  active Uber drivers  │           │
-│  │  In-memory: ~30GB│    │  + third-party feeds  │           │
+│  │  Road Network    │    │  Real-Time Traffic  │           │
+│  │  Graph           │    │  Overlay            │           │
+│  │  (OSRM/Valhalla) │    │  (edge weights      │           │
+│  │                  │    │  updated every 2min │           │
+│  │  Nodes: ~500M    │    │ From: GPS traces of │           │
+│  │  Edges: ~1B      │    │ active Uber drivers │           │
+│  │  In-memory: ~30GB│    │ + third-party feeds │           │
 │  └────────┬─────────┘    └──────────┬──────────┘           │
 │           │                         │                       │
 │           └────────────┬────────────┘                       │
@@ -994,8 +993,8 @@ The routing engine must be FAST (< 20ms per query) and ACCURATE.
 │           │  Hierarchies (CH)      │                        │
 │           │  + A* Search           │                        │
 │           │                        │                        │
-│           │  Precomputed shortcuts  │                        │
-│           │  reduce A* search space │                        │
+│           │  Precomputed shortcuts │                        │
+│           │  reduce A* search space│                        │
 │           │  from O(n) to O(√n)    │                        │
 │           │                        │                        │
 │           │  Result: 1-5ms per     │                        │
@@ -1045,7 +1044,7 @@ high-frequency GPS from vehicles actually driving the roads.
               │
               ▼
     ┌──────────────────┐
-    │  Fare Calculator  │  Computes final fare from actual route
+    │  Fare Calculator │  Computes final fare from actual route
     └────────┬─────────┘
              │
              ▼
@@ -1123,13 +1122,13 @@ Solution: Idempotency key per trip payment.
 │ Driver matched          │ Push notif (APNs/FCM) + in-app      │
 │ Driver arriving (ETA)   │ In-app only (WebSocket/SSE)         │
 │ Driver arrived          │ Push + SMS (critical — rider might  │
-│                         │ not be looking at phone)             │
-│ Trip started            │ In-app only                          │
-│ Trip completed + fare   │ Push + in-app + email receipt        │
+│                         │ not be looking at phone)            │
+│ Trip started            │ In-app only                         │
+│ Trip completed + fare   │ Push + in-app + email receipt       │
 │ Surge alert             │ In-app only (when rider opens)      │
-│ Promo code              │ Push + email                         │
+│ Promo code              │ Push + email                        │
 │ Driver location updates │ WebSocket/SSE stream (every 4s)     │
-│ Payment failed          │ Push + SMS + email                   │
+│ Payment failed          │ Push + SMS + email                  │
 └─────────────────────────┴─────────────────────────────────────┘
 ```
 
@@ -1195,7 +1194,7 @@ Backend:
 │                   │  day)          │ per day. ~225 rows per partition   │
 │                   │                │ (15 min trip × 15 updates/min)     │
 ├───────────────────┼────────────────┼────────────────────────────────────┤
-│ Surge data        │ (city_id,      │ Redis. Small enough to fit in one │
+│ Surge data        │ (city_id,      │ Redis. Small enough to fit in one  │
 │                   │  geohash)      │ cluster per city.                  │
 └───────────────────┴────────────────┴────────────────────────────────────┘
 ```
@@ -1205,28 +1204,28 @@ Backend:
 ```
                     PostgreSQL (Trips Service)
                     
-  ┌────────────────────────────────────────────────────┐
-  │                 Shard Group 1                       │
-  │                                                    │
-  │   Primary (us-east-1a)                             │
+  ┌───────────────────────────────────────────────────┐
+  │                 Shard Group 1                     │
+  │                                                   │
+  │   Primary (us-east-1a)                            │
   │      ├── Sync Standby (us-east-1b)     ← HA       │
-  │      ├── Async Replica (us-west-2a)    ← DR        │
-  │      └── Read Replica (us-east-1c)     ← reads     │
-  │                                                    │
+  │      ├── Async Replica (us-west-2a)    ← DR       │
+  │      └── Read Replica (us-east-1c)     ← reads    │
+  │                                                   │
   │   Shard range: trip_id % 128 ∈ [0, 15]            │
-  └────────────────────────────────────────────────────┘
+  └───────────────────────────────────────────────────┘
   × 8 shard groups = 128 logical shards across 32 physical hosts
 
                     Cassandra (Location History)
 
   ┌────────────────────────────────────────────────────┐
   │   Ring: 12 nodes per datacenter, 2 datacenters     │
-  │   Replication factor: 3 (local) + 2 (remote DC)   │
+  │   Replication factor: 3 (local) + 2 (remote DC)    │
   │   Consistency: LOCAL_QUORUM for writes             │
   │   Total: 24 nodes                                  │
   │                                                    │
   │   750K writes/sec ÷ 24 nodes = ~31K writes/node    │
-  │   Well within Cassandra's ~50K writes/node ceiling  │
+  │   Well within Cassandra's ~50K writes/node ceiling │
   └────────────────────────────────────────────────────┘
 ```
 
@@ -1266,7 +1265,7 @@ Backend:
 │    ├─────────────────────────┼───────────────────────────────┤   │
 │    │  ETA Cache              │  200 GB                       │   │
 │    │  (origin_cell, dest_cell) → ETA                         │   │
-│    │  Coarse-grained to allow reuse. TTL: 60s               │   │
+│    │  Coarse-grained to allow reuse. TTL: 60s                │   │
 │    ├─────────────────────────┼───────────────────────────────┤   │
 │    │  User Session Cache     │  200 GB                       │   │
 │    │  Auth tokens, prefs     │  TTL: 86400s                  │   │
@@ -1302,18 +1301,18 @@ the same instance so the index stays accurate.
 Solution: Consistent hash ring (Uber open-sourced this as "Ringpop").
 
                          ┌───────────────┐
-                    ┌───→│  Instance A    │───┐
-                    │    │  cities: NYC,  │   │
-                    │    │  BOS, PHL      │   │
+                    ┌───→│  Instance A   │───┐
+                    │    │  cities: NYC, │   │
+                    │    │  BOS, PHL     │   │
                     │    └───────────────┘   │
             ┌───────┴───┐              ┌─────┴─────┐
-            │ Hash Ring  │              │ Instance B │
-            │            │              │ cities: SF,│
-            │  key =     │              │ LA, SEA    │
-            │  city_id   │              └─────┬─────┘
-            └───────┬───┘                     │
-                    │    ┌───────────────┐     │
-                    └───→│  Instance C    │←───┘
+            │ Hash Ring  │             │ Instance B │
+            │            │             │ cities: SF,│
+            │  key =     │             │ LA, SEA    │
+            │  city_id   │             └─────┬─────┘
+            └───────┬───┘                    │
+                    │    ┌───────────────┐   │
+                    └───→│  Instance C    │←─┘
                          │  cities: LDN, │
                          │  PAR, BER     │
                          └───────────────┘
@@ -1410,8 +1409,8 @@ Uber uses geographic cells. Each city (or group of small cities) is an independe
     ┌───────────▼────────────┐    ┌────────────▼───────────────┐
     │     Cell: US-East      │    │      Cell: US-West         │
     │                        │    │                            │
-    │  Cities: NYC, BOS,     │    │  Cities: SF, LA, SEA,     │
-    │  PHL, DC, MIA, ATL     │    │  DEN, PHX, PDX            │
+    │  Cities: NYC, BOS,     │    │  Cities: SF, LA, SEA,      │
+    │  PHL, DC, MIA, ATL     │    │  DEN, PHX, PDX             │
     │                        │    │                            │
     │  ┌──────────────────┐  │    │  ┌──────────────────┐      │
     │  │ All services     │  │    │  │ All services     │      │
@@ -1460,8 +1459,8 @@ Cross-cell traffic (rare):
 │                          │  - Riders see "updating trip status..." for 30s       │
 │                          │  - NO trips lost (WAL replicated to standby)          │
 │                          │ After promotion: all in-flight retries succeed.       │
-├──────────────────────────┼──────────────────────────────────────────────────────┤
-│ Kafka broker failure     │ Partition leadership moves to ISR follower.            │
+├──────────────────────────┼───────────────────────────────────────────────────────┤
+│ Kafka broker failure     │ Partition leadership moves to ISR follower.           │
 │                          │ Producers retry (idempotent). Consumers rebalance.    │
 │                          │ Location updates delayed by 2-5 seconds.              │
 │                          │ No data loss (replication factor = 3).                │
@@ -1532,7 +1531,7 @@ Cross-cell traffic (rare):
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    Uber Operations Dashboard                         │
+│                    Uber Operations Dashboard                        │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  Business Metrics (real-time):                                      │
@@ -1895,3 +1894,10 @@ Solution:
 │                      │ between services                                                                                                                            │
 └──────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
+create an agentic setup with calude code, which can address following issues..
+
+
+
+1) Add an entry to the articles table in news_data database in postgres (postgres@localhost:5532).
+2) Create a new table in the database called articles_view.
+3) 

@@ -3,7 +3,7 @@ YouTube Platform — Comprehensive High-Level Design
 ---                                                                                                                                                                                 
 1. Scale Definition
 
-┌──────────────────────────────────────────────────────────────────┐                                                                                                                
+┌───────────────────────────────────────────────────────────────────┐                                                                                                                
 │  USERS & ENGAGEMENT                                               │                                                                                                               
 │                                                                   │                                                                                                               
 │  Monthly active users:         2.5 B                              │                                                                                                               
@@ -16,7 +16,7 @@ YouTube Platform — Comprehensive High-Level Design
 │                                                                   │                                                                                                               
 │  Total videos:                 800 M+                             │
 │  Videos uploaded per minute:   500 hours of content               │                                                                                                               
-│    → ~3,000 videos/min  =  ~50 videos/second                     │                                                                                                                
+│    → ~3,000 videos/min  =  ~50 videos/second                      │                                                                                                                
 │  Average video length:         ~10 minutes                        │                                                                                                               
 │  Creators with channels:       50 M+                              │                                                                                                               
 │                                                                   │                                                                                                               
@@ -45,7 +45,7 @@ YouTube Platform — Comprehensive High-Level Design
 │  Serving instances:            200,000+                           │                                                                                                               
 │  ML model serving:             GPU clusters per region            │
 │  Microservices:                1,000+                             │                                                                                                               
-└────────────────────────────────────────────────────────────────── ┘
+└───────────────────────────────────────────────────────────────────┘
                                                                                                                                                                                       
 ---             
 2. Guiding Principles
@@ -85,6 +85,7 @@ YouTube Platform — Comprehensive High-Level Design
 
   ---                                                                                                                                                                                 
 3. Global Infrastructure
+```
 
                                ┌────────────────┐
                                │   Global DNS   │                                                                                                                                  
@@ -100,7 +101,7 @@ YouTube Platform — Comprehensive High-Level Design
     │  (300+ global)  │          │  (300+ global)  │          │  (300+ global)  │                                                                                                     
     │                 │          │                 │          │                 │                                                                                                     
     │  Video cache    │          │  Video cache    │          │  Video cache    │                                                                                                     
-    │  (SSD+HDD,      │          │  (SSD+HDD,     │          │  (SSD+HDD,     │                                                                                                        
+    │  (SSD+HDD,      │          │  (SSD+HDD,      │          │  (SSD+HDD,      │                                                                                                        
     │   100TB-1PB     │          │   100TB-1PB     │          │   100TB-1PB     │                                                                                                     
     │   per PoP)      │          │   per PoP)      │          │   per PoP)      │                                                                                                     
     │                 │          │                 │          │                 │                                                                                                     
@@ -110,15 +111,15 @@ YouTube Platform — Comprehensive High-Level Design
              │ miss                       │ miss                       │ miss
              ▼                            ▼                            ▼                                                                                                              
     ┌──────────────────────────────────────────────────────────────────────────┐
-    │  ORIGIN SHIELD (regional mid-tier cache)                                  │                                                                                                     
-    │                                                                           │                                                                                                     
+    │  ORIGIN SHIELD (regional mid-tier cache)                                 │                                                                                                     
+    │                                                                          │                                                                                                     
     │  Absorbs cache misses from multiple edge PoPs in the same region.        │
     │  Prevents thundering herd on origin when a popular video is requested    │                                                                                                      
     │  from 50 edge PoPs simultaneously (each misses, but origin shield has it)│                                                                                                      
-    │                                                                           │                                                                                                     
+    │                                                                          │                                                                                                     
     │  US-EAST shield    EU-WEST shield    AP-EAST shield                      │                                                                                                      
-    │  (500 TB SSD)      (500 TB SSD)      (500 TB SSD)                       │                                                                                                       
-    └──────────────────────────────┬────────────────────────────────────────────┘                                                                                                     
+    │  (500 TB SSD)      (500 TB SSD)      (500 TB SSD)                        │                                                                                                       
+    └──────────────────────────────┬───────────────────────────────────────────┘                                                                                                     
                                    │ miss                                                                                                                                             
                                    ▼                                                                                                                                                  
     ┌──────────────────────────────────────────────────────────────────────────┐
@@ -137,13 +138,13 @@ CDN Video Caching Strategy
 TIERED CACHE ADMISSION (not everything gets cached):
 
 ┌─────────────────────────────────────────────────────────────┐
-│                                                              │                                                                                                                    
+│                                                             │                                                                                                                    
 │  HOT TIER (SSD, edge PoP):                                  │                                                                                                                     
 │    Top 0.1% of videos by recent views.                      │
-│    ~800K videos × 10 variants × 500MB avg = ~4 PB globally │                                                                                                                      
+│    ~800K videos × 10 variants × 500MB avg = ~4 PB globally  │                                                                                                                      
 │    Distributed across 300 PoPs → ~13 TB per PoP             │                                                                                                                     
-│    Cache hit rate: 80% of all bytes served                   │                                                                                                                    
-│                                                              │                                                                                                                    
+│    Cache hit rate: 80% of all bytes served                  │                                                                                                                    
+│                                                             │                                                                                                                    
 │  WARM TIER (HDD, edge PoP + origin shield):                 │                                                                                                                     
 │    Top 5% of videos by recent views.                        │                                                                                                                     
 │    ~40M videos × selective variants = ~100 PB globally      │
@@ -157,31 +158,31 @@ TIERED CACHE ADMISSION (not everything gets cached):
 │    Higher latency (origin read), but acceptable for          │                                                                                                                    
 │    videos with < 100 views/day.                              │                                                                                                                    
 │    Some cold videos are only stored in 2-3 resolutions      │                                                                                                                     
-│    (not all 10) to save storage.                             │                                                                                                                    
-│                                                              │                                                                                                                    
-│  Total CDN cache hit rate: ~95%                              │                                                                                                                    
+│    (not all 10) to save storage.                            │                                                                                                                    
+│                                                             │                                                                                                                    
+│  Total CDN cache hit rate: ~95%                             │                                                                                                                    
 │  Origin serves only ~5% of bytes = ~50 Tbps peak            │                                                                                                                     
-│                                                              │                                                                                                                    
+│                                                             │                                                                                                                    
 └─────────────────────────────────────────────────────────────┘
                                                                                                                                                                                       
----             
+```          
 4. Video Upload & Processing Pipeline
 
 This is the most complex offline pipeline. A single video upload triggers dozens of processing steps.
-
+```
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  VIDEO UPLOAD & PROCESSING PIPELINE                                         │                                                                                                     
 │                                                                             │                                                                                                     
-│  ┌──────────┐                                                              │
-│  │  Creator  │                                                              │                                                                                                     
-│  │  uploads  │                                                              │                                                                                                     
-│  │  video    │                                                              │
-│  └─────┬────┘                                                              │                                                                                                      
-│        │                                                                    │                                                                                                     
-│        ▼                                                                    │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │                                                                                                      
+│           ┌──────────┐                                                      │
+│           │  Creator │                                                      │                                                                                                     
+│           │  uploads │                                                      │                                                                                                     
+│           │  video   │                                                      │
+│           └─────┬────┘                                                      │                                                                                                      
+│                 │                                                           │                                                                                                     
+│                 ▼                                                           │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │                                                                                                      
 │  │  UPLOAD SERVICE                                                       │  │                                                                                                     
-│  │                                                                        │  │
+│  │                                                                       │  │
 │  │  • Resumable upload (tus protocol or proprietary)                     │  │                                                                                                     
 │  │    → large files (4K video = 10+ GB) need resume on network failure   │  │                                                                                                     
 │  │  • Client chunks file into 8MB segments                               │  │                                                                                                     
@@ -214,19 +215,19 @@ This is the most complex offline pipeline. A single video upload triggers dozens
 │  │              ▼            ▼            ▼                              │  │
 │  │        ┌──────────┐ ┌──────────┐ ┌──────────┐                       │  │                                                                                                       
 │  │        │ Validate │ │ Extract  │ │ Generate │                       │  │
-│  │        │ format,  │ │ metadata │ │ video    │                       │  │                                                                                                       
+│  │        │ format,  │ │ metadata │ │ **video  │                       │  │                                                                                                       
 │  │        │ codecs,  │ │ (duration│ │ finger-  │                       │  │
-│  │        │ check    │ │  resolut-│ │ print    │                       │  │                                                                                                       
+│  │        │ check    │ │  resolut-│ │ print**  │                       │  │                                                                                                       
 │  │        │ corrupt  │ │  ion,    │ │ (Content │                       │  │                                                                                                       
 │  │        │          │ │  fps)    │ │  ID)     │                       │  │                                                                                                       
 │  │        └────┬─────┘ └────┬─────┘ └────┬─────┘                       │  │                                                                                                       
-│  │             │            │            │                              │  │
-│  │             ▼            ▼            ▼                              │  │                                                                                                      
+│  │             │            │            │                             │  │
+│  │             ▼            ▼            ▼                             │  │                                                                                                      
 │  │        ┌─────────────────────────────────────┐                      │  │
-│  │        │          VALIDATION GATE             │                      │  │                                                                                                      
-│  │        │  All 3 must pass before transcoding  │                      │  │
+│  │        │          VALIDATION GATE            │                      │  │                                                                                                      
+│  │        │  All 3 must pass before transcoding │                      │  │
 │  │        └──────────────┬──────────────────────┘                      │  │                                                                                                       
-│  │                       │                                              │  │                                                                                                      
+│  │                       │                                             │  │                                                                                                      
 │  │         ┌─────────────┼─────────────┐                               │  │                                                                                                       
 │  │         ▼             ▼             ▼                               │  │                                                                                                       
 │  │    ┌─────────┐  ┌──────────┐  ┌──────────┐                        │  │
@@ -234,13 +235,13 @@ This is the most complex offline pipeline. A single video upload triggers dozens
 │  │    │ 360p    │  │ 720p     │  │ 1080p    │                        │  │                                                                                                         
 │  │    │ H.264   │  │ H.264    │  │ H.264    │                        │  │                                                                                                         
 │  │    └────┬────┘  └────┬─────┘  └────┬─────┘                        │  │                                                                                                         
-│  │         │            │             │                               │  │                                                                                                        
+│  │         │            │             │                              │  │                                                                                                        
 │  │    ┌────┴────┐  ┌────┴─────┐  ┌────┴─────┐                        │  │
 │  │    │Transcode│  │Transcode │  │Transcode │  ... (parallel)        │  │                                                                                                         
 │  │    │ 360p    │  │ 720p     │  │ 1080p    │                        │  │                                                                                                         
 │  │    │ VP9     │  │ VP9      │  │ VP9      │                        │  │                                                                                                         
 │  │    └────┬────┘  └────┬─────┘  └────┬─────┘                        │  │                                                                                                         
-│  │         │            │             │                               │  │                                                                                                        
+│  │         │            │             │                              │  │                                                                                                        
 │  │    ┌────┴────┐  ┌────┴─────┐  ┌────┴─────┐                        │  │
 │  │    │Transcode│  │Transcode │  │Transcode │  (lower priority,      │  │                                                                                                         
 │  │    │ 360p    │  │ 720p     │  │ 1080p    │   AV1 is CPU-heavy)    │  │                                                                                                         
@@ -270,7 +271,7 @@ This is the most complex offline pipeline. A single video upload triggers dozens
 │  │              │   (auto-     │                                      │  │                                                                                                        
 │  │              │   caption ML)│                                      │  │                                                                                                        
 │  │              └───────┬──────┘                                      │  │
-│  │                      │                                              │  │                                                                                                       
+│  │                      │                                             │  │                                                                                                       
 │  │         ┌────────────┼────────────┐                                │  │                                                                                                        
 │  │         ▼            ▼            ▼                                │  │
 │  │   ┌──────────┐ ┌──────────┐ ┌──────────┐                         │  │                                                                                                          
@@ -283,27 +284,27 @@ This is the most complex offline pipeline. A single video upload triggers dozens
 │  │   │ spam,    │ │          │ │          │                         │  │                                                                                                          
 │  │   │ misinfo  │ │          │ │          │                         │  │                                                                                                          
 │  │   └────┬─────┘ └────┬─────┘ └────┬─────┘                         │  │                                                                                                          
-│  │        │            │            │                                │  │                                                                                                         
-│  │        └────────────┼────────────┘                                │  │                                                                                                         
+│  │        │            │            │                               │  │                                                                                                         
+│  │        └────────────┼────────────┘                               │  │                                                                                                         
 │  │                     ▼                                              │  │
 │  │             ┌───────────────┐                                      │  │                                                                                                        
 │  │             │  PUBLISH GATE │                                      │  │                                                                                                        
 │  │             │               │                                      │  │
-│  │             │ All checks OK │──▶ status = PUBLISHED               │  │                                                                                                         
+│  │             │ All checks OK │──▶ status = PUBLISHED                │  │                                                                                                         
 │  │             │               │    Publish "video.published" event   │  │                                                                                                        
-│  │             │               │    Video appears in search/recs     │  │                                                                                                         
+│  │             │               │    Video appears in search/recs      │  │                                                                                                         
 │  │             │               │                                      │  │                                                                                                        
 │  │             │ Copyright hit │──▶ status = COPYRIGHT_CLAIM          │  │                                                                                                        
 │  │             │               │    Notify creator. Options:         │  │                                                                                                         
 │  │             │               │    dispute, mute audio, block.      │  │                                                                                                         
-│  │             │               │                                      │  │                                                                                                        
+│  │             │               │                                     │  │                                                                                                        
 │  │             │ Safety fail   │──▶ status = UNDER_REVIEW            │  │                                                                                                         
 │  │             │               │    Queue for human review.          │  │
 │  │             │               │    Auto-block if high confidence.   │  │                                                                                                         
-│  │             └───────────────┘                                      │  │
-│  └──────────────────────────────────────────────────────────────────┘  │                                                                                                          
+│  │             └───────────────┘                                     │  │
+│  └──────────────────────────────────────────────────────────────────┘   │                                                                                                          
 │                                                                         │
-└────────────────────────────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────────────────┘
 
 Transcoding Strategy
 
@@ -346,18 +347,18 @@ Transcoding Strategy
 │    Average transcode time: 2-10 minutes per variant               │                                                                                                               
 │    Concurrency: ~50,000 transcode workers                         │                                                                                                               
 │    Hardware: CPU for H.264/VP9, GPU for AV1 (hardware encoders)   │                                                                                                               
-│    Cost optimization: spot/preemptible instances for deferred jobs │                                                                                                              
+│    Cost optimization: spot/preemptible instances for deferred jobs│                                                                                                              
 │                                                                   │                                                                                                               
-│  PRIORITY QUEUE:                                                   │                                                                                                              
-│    P0: Premieres, live-to-VOD, verified creators > 1M subs       │                                                                                                                
+│  PRIORITY QUEUE:                                                  │                                                                                                              
+│    P0: Premieres, live-to-VOD, verified creators > 1M subs        │                                                                                                                
 │    P1: Verified creators, scheduled publishes                     │                                                                                                               
-│    P2: Regular uploads                                             │                                                                                                              
+│    P2: Regular uploads                                            │                                                                                                              
 │    P3: Deferred AV1 transcodes, re-encodes                        │                                                                                                               
 │                                                                   │                                                                                                               
 │    P0 videos are transcoded within 1-2 minutes.                  │
 │    P2 videos may wait 10-30 minutes during peak upload hours.    │                                                                                                                
 └──────────────────────────────────────────────────────────────────┘
-
+```
 Progressive Availability
 
 The creator and viewers don't wait for all variants. The video becomes playable as soon as the first variants are done.
@@ -379,7 +380,7 @@ T+48:00  AV1 variants available for compatible devices
                                                                                                                                                                                       
 ---             
 5. Video Storage Architecture
-
+```
 ┌──────────────────────────────────────────────────────────────────────┐
 │  VIDEO BLOB STORAGE                                                   │                                                                                                           
 │                                                                       │
@@ -503,10 +504,10 @@ Storage for Non-Video Data
 │  Analytics               ClickHouse /      Event-sourced from    │                                                                                                                
 │  (creator dashboard)     BigQuery          Kafka. Columnar.      │                                                                                                                
 └──────────────────────────────────────────────────────────────────┘
-                                                                                                                                                                                      
+  ```                                                                                                                                                                                    
 ---                                                                                                                                                                                 
 6. Video Playback / Streaming
-
+```
 ┌────────────────────────────────────────────────────────────────────────┐
 │  VIDEO PLAYBACK FLOW                                                   │                                                                                                         
 │                                                                        │
@@ -572,11 +573,11 @@ Storage for Non-Video Data
 │     │    3. If buffer is healthy (>10s): try higher quality         │   │                                                                                                         
 │     │    4. If buffer is draining (<5s): drop to lower quality      │   │                                                                                                         
 │     │    5. Request next segment at chosen quality from CDN         │   │                                                                                                         
-│     │                                                                │   │                                                                                                        
+│     │                                                               │   │                                                                                                        
 │     │  GET https://edge-lax-042.cdn.yt/v_abc123/1080p_vp9/seg_014  │   │                                                                                                          
 │     │  → CDN edge cache HIT → 1ms response                         │   │                                                                                                          
 │     │  → CDN edge cache MISS → origin shield → origin → 50-200ms   │   │                                                                                                          
-│     │                                                                │   │                                                                                                        
+│     │                                                              │   │                                                                                                        
 │     └──────────────────────────────────────────────────────────────┘   │                                                                                                          
 │                                                                         │                                                                                                         
 │  4. SEEKING                                                            │
@@ -647,7 +648,7 @@ This is the core of the product. More complex than any other component.
 │  ┌──────────────────────────────────────────────────────────────────┐  │                                                                                                          
 │  │  PHASE 1: CANDIDATE GENERATION                                    │  │
 │  │                                                                    │  │                                                                                                        
-│  │  Goal: reduce 800M videos → ~10,000 candidates in < 50ms         │  │                                                                                                          
+│  │  Goal: reduce 800M videos → ~10,000 candidates in < 50ms         │ ] │                                                                                                          
 │  │                                                                    │  │                                                                                                        
 │  │  Multiple sources, run in parallel:                                │  │                                                                                                        
 │  │                                                                    │  │                                                                                                        
@@ -741,52 +742,52 @@ This is the core of the product. More complex than any other component.
 │                                                                         │                                                                                                         
 │  ┌──────────────────────────────────────────────────────────────────┐  │                                                                                                          
 │  │  PHASE 3: RE-RANKING / POLICY LAYER                               │  │                                                                                                         
-│  │                                                                    │  │                                                                                                        
+│  │                                                                   │  │                                                                                                        
 │  │  After ML ranking, apply business rules:                          │  │
-│  │                                                                    │  │                                                                                                        
+│  │                                                                   │  │                                                                                                        
 │  │  • Diversity: don't show 10 videos from the same channel.        │  │
 │  │    Max 3 from any single channel in top 20.                      │  │                                                                                                          
 │  │  • Freshness: boost videos published in last 24h.                │  │                                                                                                          
 │  │  • Demotion: reduce rank for borderline content (not violating   │  │                                                                                                          
 │  │    but low quality: spam, misleading titles).                    │  │                                                                                                          
 │  │  • Age restriction: filter age-restricted content for            │  │                                                                                                          
-│  │    non-verified users.                                            │  │                                                                                                         
+│  │    non-verified users.                                           │  │                                                                                                         
 │  │  • Regional: comply with country-specific content laws.          │  │                                                                                                          
 │  │  • Ad-friendly: if ads are enabled, prefer ad-friendly content   │  │                                                                                                          
-│  │    in top positions.                                              │  │                                                                                                         
-│  │                                                                    │  │                                                                                                        
+│  │    in top positions.                                             │  │                                                                                                         
+│  │                                                                  │  │                                                                                                        
 │  │  Output: final ordered list of ~50 video IDs                     │  │                                                                                                          
 │  └──────────────────────────────────────────────────────────────────┘  │                                                                                                          
 │                                                                         │                                                                                                         
 │  INFRASTRUCTURE:                                                        │                                                                                                         
 │                                                                         │                                                                                                         
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │                                                                    │  │                                                                                                        
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                                                                  │  │                                                                                                        
 │  │  Candidate generation: CPU-based, ANN index (FAISS/ScaNN)        │  │
-│  │    Billions of embeddings, updated hourly.                        │  │                                                                                                         
-│  │    Latency: 10-30ms per source.                                   │  │                                                                                                         
-│  │                                                                    │  │                                                                                                        
+│  │    Billions of embeddings, updated hourly.                       │  │                                                                                                         
+│  │    Latency: 10-30ms per source.                                  │  │                                                                                                         
+│  │                                                                  │  │                                                                                                        
 │  │  Ranking model: GPU inference (TensorRT / TFServing)              │  │                                                                                                         
 │  │    Batch scoring: 10K candidates in one GPU pass.                 │  │                                                                                                         
 │  │    Latency: 50-100ms.                                             │  │                                                                                                         
 │  │    Cluster: 1,000+ GPUs dedicated to ranking inference.           │  │                                                                                                         
-│  │                                                                    │  │                                                                                                        
+│  │                                                                   │  │                                                                                                        
 │  │  Feature store (Redis + Bigtable):                                │  │                                                                                                         
 │  │    User features: updated in real-time (watch events → Kafka      │  │                                                                                                         
 │  │      → feature pipeline → Redis). Read latency: < 2ms.           │  │                                                                                                          
 │  │    Video features: batch-computed daily. Read from Bigtable.     │  │                                                                                                          
-│  │                                                                    │  │                                                                                                        
-│  │  Model retraining:                                                │  │                                                                                                         
+│  │                                                                  │  │                                                                                                        
+│  │  Model retraining:                                               │  │                                                                                                         
 │  │    Candidate models: retrained daily on last 30 days of data.    │  │                                                                                                          
 │  │    Ranking model: retrained every 6 hours on recent data.        │  │                                                                                                          
-│  │    A/B testing: 5-10 ranking experiments running simultaneously.  │  │                                                                                                         
-│  │    Evaluation metric: overall watch time per user session.        │  │                                                                                                         
-│  │                                                                    │  │                                                                                                        
+│  │    A/B testing: 5-10 ranking experiments running simultaneously. │  │                                                                                                         
+│  │    Evaluation metric: overall watch time per user session.       │  │                                                                                                         
+│  │                                                                  │  │                                                                                                        
 │  └──────────────────────────────────────────────────────────────────┘  │                                                                                                          
-│                                                                         │                                                                                                         
-│  GRACEFUL DEGRADATION:                                                  │                                                                                                         
-│                                                                         │                                                                                                         
-│  If ranking model is down:                                              │
+│                                                                        │                                                                                                         
+│  GRACEFUL DEGRADATION:                                                 │                                                                                                         
+│                                                                        │                                                                                                         
+│  If ranking model is down:                                             │
 │    → Fall back to pre-computed recommendations (batch, last 6 hours)  │                                                                                                           
 │  If candidate generation is down:                                       │                                                                                                         
 │    → Fall back to subscription-based feed + trending                   │                                                                                                          
@@ -817,7 +818,7 @@ View counting sounds simple. At YouTube scale, it's one of the hardest problems.
 │  │  TWO-PATH ARCHITECTURE                                        │   │                                                                                                           
 │  │                                                               │   │
 │  │  PATH 1: REAL-TIME (approximate, for display)                 │    │                                                                                                           
-│  │                                                                │    │                                                                                                          
+│  │                                                               │    │                                                                                                          
 │  │  Client → View Event API → Kafka topic: "view.events"         │    │
 │  │                                │                               │    │                                                                                                          
 │  │                                ▼                               │    │
@@ -877,10 +878,10 @@ View counting sounds simple. At YouTube scale, it's one of the hardest problems.
 │  │                      │  every hour with  │                     │    │                                                                                                          
 │  │                      │  verified count.  │                     │    │
 │  │                      └──────────────────┘                     │    │                                                                                                           
-│  │                                                                │    │
+│  │                                                                │   │
 │  │  Used for: creator analytics, ad revenue calculation,         │    │                                                                                                           
 │  │  copyright payment distribution.                              │    │                                                                                                           
-│  └──────────────────────────────────────────────────────────────┘    │                                                                                                            
+│  └──────────────────────────────────────────────────────────────┘     │                                                                                                            
 │                                                                       │                                                                                                           
 │  FRAUD DETECTION:                                                     │                                                                                                           
 │                                                                       │                                                                                                           
@@ -889,8 +890,8 @@ View counting sounds simple. At YouTube scale, it's one of the hardest problems.
 │    • Not from the same user + video within 30 minutes                │                                                                                                            
 │    • Client fingerprint passes bot detection                         │
 │    • IP is not on known VPN/proxy/datacenter blocklist               │                                                                                                            
-│    • Watch pattern is organic (not 1000 views from same /24 subnet) │                                                                                                             
-│                                                                       │                                                                                                           
+│    • Watch pattern is organic (not 1000 views from same /24 subnet)  │                                                                                                             
+│                                                                      │                                                                                                           
 │  View count may DECREASE after batch processing strips fraudulent    │                                                                                                            
 │  views. This is visible to creators in analytics ("adjusted views"). │                                                                                                            
 └──────────────────────────────────────────────────────────────────────┘
@@ -1014,20 +1015,20 @@ View counting sounds simple. At YouTube scale, it's one of the hardest problems.
 │  │       │                                                       │    │                                                                                                           
 │  │       ▼                                                       │    │
 │  │  ┌──────────────┐                                             │    │                                                                                                           
-│  │  │  Ad Request   │  From player: user_id, video_id,          │    │                                                                                                            
-│  │  │  API          │  device_type, geo, video_category,        │    │                                                                                                            
+│  │  │  Ad Request   │  From player: user_id, video_id,           │    │                                                                                                            
+│  │  │  API          │  device_type, geo, video_category,         │    │                                                                                                            
 │  │  │               │  ad_position (pre/mid/post-roll)           │    │                                                                                                           
 │  │  └──────┬────────┘                                            │    │                                                                                                           
 │  │         │                                                     │    │                                                                                                           
 │  │         ▼                                                     │    │                                                                                                           
-│  │  ┌──────────────┐  ┌──────────────────────┐                  │    │                                                                                                            
+│  │  ┌──────────────┐   ┌───────────────────────┐                  │    │                                                                                                            
 │  │  │ Targeting     │  │ User interest profile │                  │    │
-│  │  │ Matcher       │──│ (from feature store)   │                  │    │                                                                                                         
-│  │  │               │  │                        │                  │    │                                                                                                         
-│  │  │ Match user    │  │ Interests: technology, │                  │    │                                                                                                         
-│  │  │ profile       │  │ gaming, cooking        │                  │    │                                                                                                         
-│  │  │ against       │  │ Demographics: M, 25-34 │                  │    │                                                                                                         
-│  │  │ advertiser    │  │ Recent searches: ...   │                  │    │                                                                                                         
+│  │  │ Matcher       │──│ (from feature store)  │                  │    │                                                                                                         
+│  │  │               │  │                       │                  │    │                                                                                                         
+│  │  │ Match user    │  │ Interests: technology,│                  │    │                                                                                                         
+│  │  │ profile       │  │ gaming, cooking       │                  │    │                                                                                                         
+│  │  │ against       │  │ Demographics: M, 25-34│                  │    │                                                                                                         
+│  │  │ advertiser    │  │ Recent searches: ...  │                  │    │                                                                                                         
 │  │  │ targeting     │  └──────────────────────┘                  │    │                                                                                                           
 │  │  │ criteria      │                                            │    │                                                                                                           
 │  │  │               │  → ~1,000 eligible ad campaigns            │    │                                                                                                           
@@ -1035,26 +1036,26 @@ View counting sounds simple. At YouTube scale, it's one of the hardest problems.
 │  │         │                                                     │    │                                                                                                           
 │  │         ▼                                                     │    │                                                                                                           
 │  │  ┌──────────────┐                                             │    │
-│  │  │  Ad Auction   │  Real-time auction among eligible ads:    │    │                                                                                                            
+│  │  │  Ad Auction   │  Real-time auction among eligible ads:     │    │                                                                                                            
 │  │  │               │                                            │    │                                                                                                           
 │  │  │  Each ad bids:│  bid = advertiser_max_bid                  │    │                                                                                                           
 │  │  │               │      × P(click | user, video, ad)         │    │                                                                                                            
 │  │  │  eCPM = bid   │      × quality_score                      │    │                                                                                                            
 │  │  │    × P(click) │      × pacing_factor                      │    │                                                                                                            
-│  │  │    × quality  │                                            │    │                                                                                                           
+│  │  │    × quality  │                                           │    │                                                                                                           
 │  │  │               │  Pacing: if advertiser spent 80% of daily │    │                                                                                                            
 │  │  │  Winner:      │  budget and it's only noon, reduce their  │    │                                                                                                            
 │  │  │  highest eCPM │  pacing_factor to spread budget over the  │    │                                                                                                            
 │  │  │               │  remaining hours.                          │    │                                                                                                           
 │  │  │  Price: second│                                            │    │                                                                                                           
-│  │  │  -price (pay  │  P(click) predicted by ML model (similar  │    │                                                                                                            
+│  │  │  -price (pay  │  P(click) predicted by ML model (similar   │    │                                                                                                            
 │  │  │  bid of 2nd   │  architecture to rec ranking model).       │    │                                                                                                           
 │  │  │  place + $0.01│                                            │    │                                                                                                           
 │  │  └──────┬────────┘                                            │    │                                                                                                           
 │  │         │                                                     │    │                                                                                                           
 │  │         ▼                                                     │    │
 │  │  ┌──────────────┐                                             │    │                                                                                                           
-│  │  │  Brand Safety │  Check: is this ad appropriate for this   │    │                                                                                                            
+│  │  │  Brand Safety │  Check: is this ad appropriate for this    │    │                                                                                                            
 │  │  │  Filter       │  video's content?                          │    │                                                                                                           
 │  │  │               │  Advertiser blocklists × video content     │    │                                                                                                           
 │  │  │               │  classification. Filter unsafe pairings.   │    │                                                                                                           
@@ -1064,7 +1065,7 @@ View counting sounds simple. At YouTube scale, it's one of the hardest problems.
 │  │  Return winning ad creative URL to player.                    │    │
 │  │  Player fetches ad video from ad CDN and plays it.            │    │                                                                                                           
 │  │  Total latency: < 200ms.                                      │    │                                                                                                           
-│  └──────────────────────────────────────────────────────────────┘    │                                                                                                            
+│  └──────────────────────────────────────────────────────────────┘     │                                                                                                            
 │                                                                       │                                                                                                           
 │  AD EVENT TRACKING (for billing):                                     │                                                                                                           
 │                                                                       │                                                                                                           
@@ -1202,9 +1203,9 @@ View counting sounds simple. At YouTube scale, it's one of the hardest problems.
 │                                                                       │                                                                                                           
 │  LIKES (200K/sec):                                                    │
 │  ┌──────────────────────────────────────────────────────────────┐    │                                                                                                            
-│  │  Like API → Kafka → Counter Service (Redis + Cassandra)       │    │                                                                                                           
-│  │                                                                │    │                                                                                                          
-│  │  Redis: real-time approximate count (INCRBY, sharded).        │    │                                                                                                           
+│  │  Like API → Kafka → Counter Service (Redis + Cassandra)      │    │                                                                                                           
+│  │                                                              │    │                                                                                                          
+│  │  Redis: real-time approximate count (INCRBY, sharded).       │    │                                                                                                           
 │  │  Cassandra: durable per-user like record                      │    │                                                                                                           
 │  │    (user_id, video_id, timestamp)                             │    │                                                                                                           
 │  │    Used for: "did I already like this?" check (fast lookup).  │    │                                                                                                           
@@ -1238,27 +1239,27 @@ View counting sounds simple. At YouTube scale, it's one of the hardest problems.
 │  └──────────────────────────────────────────────────────────────┘    │                                                                                                            
 │                                                                       │                                                                                                           
 │  SUBSCRIPTIONS:                                                       │                                                                                                           
-│  ┌──────────────────────────────────────────────────────────────┐    │                                                                                                            
+│  ┌──────────────────────────────────────────────────────────────┐     │                                                                                                            
 │  │  Subscribe: write (user_id, channel_id, subscribed_at)        │    │
 │  │    to Bigtable. Increment channel's subscriber count          │    │                                                                                                           
 │  │    (Redis counter, reconciled with Cassandra).                │    │                                                                                                           
-│  │                                                                │    │                                                                                                          
+│  │                                                               │    │                                                                                                          
 │  │  Subscription feed ("Subscriptions" tab):                     │    │                                                                                                           
 │  │    Fan-out on write vs. fan-out on read:                      │    │                                                                                                           
-│  │                                                                │    │                                                                                                          
+│  │                                                               │    │                                                                                                          
 │  │    Small creator (< 100K subs):                               │    │                                                                                                           
 │  │      Fan-out on WRITE. When creator uploads,                  │    │                                                                                                           
-│  │      push to each subscriber's feed (Bigtable).              │    │                                                                                                            
+│  │      push to each subscriber's feed (Bigtable).               │    │                                                                                                            
 │  │      100K writes, but only once per upload.                   │    │                                                                                                           
-│  │                                                                │    │                                                                                                          
+│  │                                                               │    │                                                                                                          
 │  │    Large creator (> 1M subs):                                 │    │                                                                                                           
 │  │      Fan-out on READ. Subscriber's feed is assembled          │    │                                                                                                           
 │  │      at read time by querying "latest videos from             │    │                                                                                                           
 │  │      channels I subscribe to."                                │    │                                                                                                           
 │  │      Avoids 100M writes when a mega-creator uploads.          │    │                                                                                                           
-│  │                                                                │    │                                                                                                          
+│  │                                                               │    │                                                                                                          
 │  │    Hybrid threshold: ~500K subscribers.                       │    │                                                                                                           
-│  │                                                                │    │                                                                                                          
+│  │                                                               │    │                                                                                                          
 │  │  Notification (bell icon):                                    │    │                                                                                                           
 │  │    "All notifications" enabled → push notification on upload. │    │                                                                                                           
 │  │    For 100M-subscriber channels: notification is batched,     │    │                                                                                                           
@@ -1273,45 +1274,45 @@ What Fails and How We Handle It
 
 ┌──────────────────────────────────────────────────────────────────────┐
 │  FAILURE MODE          IMPACT               MITIGATION               │                                                                                                            
-│  ──────────────────── ──────────────────── ─────────────────────── │                                                                                                              
-│                                                                       │                                                                                                           
+│  ──────────────────── ──────────────────── ───────────────────────── │                                                                                                              
+│                                                                      │                                                                                                           
 │  CDN edge PoP down    Users in that region   Anycast DNS routes to   │                                                                                                            
 │                       see higher latency     next-nearest PoP. Auto  │                                                                                                            
 │                       (hitting origin        within 30s. No manual   │                                                                                                            
-│                       shield instead)        intervention.            │                                                                                                           
-│                                                                       │                                                                                                           
+│                       shield instead)        intervention.           │                                                                                                           
+│                                                                      │                                                                                                           
 │  Origin shield down   Cache misses go to     Multiple shields per    │                                                                                                            
 │                       origin directly.       region. Traffic shifts  │                                                                                                            
 │                       Higher origin load.    to surviving shields.   │                                                                                                            
-│                                                                       │                                                                                                           
-│  Blob storage         Videos unplayable if   3x replication (hot) or│                                                                                                             
+│                                                                      │                                                                                                           
+│  Blob storage         Videos unplayable if   3x replication (hot) or │                                                                                                             
 │  node failure         all replicas lost.     14-shard erasure coding │                                                                                                            
-│                       Unlikely with 3x       (cold). Tolerates      │                                                                                                             
+│                       Unlikely with 3x       (cold). Tolerates       │                                                                                                             
 │                       replication.           multiple shard losses.  │                                                                                                            
-│                                                                       │                                                                                                           
-│  Transcoding cluster  New uploads delayed.   Queue absorbs burst.   │                                                                                                             
+│                                                                      │                                                                                                           
+│  Transcoding cluster  New uploads delayed.   Queue absorbs burst.    │                                                                                                             
 │  partial failure      Not an outage —        Priority queue ensures  │                                                                                                            
 │                       existing videos        high-value videos are   │                                                                                                            
 │                       unaffected.            transcoded first.       │                                                                                                            
-│                                                                       │                                                                                                           
+│                                                                      │                                                                                                           
 │  Recommendation       Home page shows stale  Pre-computed recs in    │                                                                                                            
 │  engine down          or generic recs.       cache (Redis). Updated  │                                                                                                            
 │                       Reduced engagement,    every 6 hours. Fallback │                                                                                                            
 │                       not a hard failure.    to trending/popular.    │                                                                                                            
-│                                                                       │                                                                                                           
+│                                                                      │                                                                                                           
 │  Search cluster       Search returns errors  Multiple search cluster │                                                                                                            
 │  down                 or degraded results.   replicas per region.    │                                                                                                            
 │                       Autocomplete may fail. Circuit breaker returns │                                                                                                            
 │                                              cached results for top  │                                                                                                            
 │                                              1000 queries.           │                                                                                                            
-│                                                                       │
-│  Metadata DB (Vitess) Video pages can't      Vitess has multi-AZ    │                                                                                                             
+│                                                                      │
+│  Metadata DB (Vitess) Video pages can't      Vitess has multi-AZ     │                                                                                                             
 │  primary down         load titles/           replicas. Automatic     │                                                                                                            
 │                       descriptions. Play     primary failover in    │                                                                                                             
 │                       still works (video     <30s. Reads continue   │                                                                                                             
-│                       blobs separate).       from replicas during   │                                                                                                             
+│                       blobs separate).       from replicas during   │`                                                                                                             
 │                                              failover.               │                                                                                                            
-│                                                                       │                                                                                                           
+│                                                                      │                                                                                                           
 │  Kafka cluster down   Events stop flowing.   Multi-AZ replicas.     │                                                                                                             
 │                       View counts stale.     Producers buffer        │                                                                                                            
 │                       Recs not updating.     locally (disk) for up  │                                                                                                             
@@ -1324,7 +1325,7 @@ What Fails and How We Handle It
 │                                                                       │
 │  Redis cluster down   Cache miss → all       Redis Cluster with     │                                                                                                             
 │                       reads hit DB.          replicas. If totally    │                                                                                                            
-│                       Massive DB load.       down: circuit breaker   │                                                                                                            
+│                       Massive DB load.       down: `circuit breaker`   │                                                                                                            
 │                       Potential cascade.     → serve degraded        │                                                                                                            
 │                                              (no like counts, approx │                                                                                                            
 │                                              view counts from batch).│                                                                                                            
@@ -1586,18 +1587,18 @@ Time to fully interactive: ~600ms.
 │  │ • Notifications│ │ • Revenue     │  │   (real-time)     │             │                                                                                                        
 │  │ • Live Chat   │  │   Reporting   │  │ • Embedding Index │             │                                                                                                        
 │  │               │  │ • A/B Testing │  │   (FAISS/ScaNN)   │             │                                                                                                        
-│  └───────────────┘  └────────────────┘  └───────────────────┘             │                                                                                                       
-│                                                                              │                                                                                                    
+│  └───────────────┘  └───────────────┘  └───────────────────┘             │                                                                                                       
+│                                                                             │                                                                                                    
 │  ┌──────────────────────────────────────────────────────────────────────┐   │                                                                                                     
 │  │  DATA LAYER                                                          │   │                                                                                                     
-│  │                                                                       │   │                                                                                                    
+│  │                                                                      │   │                                                                                                    
 │  │  Blob Storage     Vitess       Bigtable     Redis      Cassandra    │   │
 │  │  (video files)    (metadata,   (user        (cache,    (view counts,│   │                                                                                                      
 │  │  5+ exabytes      comments)    profiles,    features)  likes,       │   │                                                                                                      
 │  │                                subs)                   durable      │   │                                                                                                      
 │  │                                                        counters)    │   │                                                                                                      
-│  └──────────────────────────────────────────────────────────────────────┘   │                                                                                                     
-│                                                                              │                                                                                                    
+│  └─────────────────────────────────────────────────────────────────────┘   │                                                                                                     
+│                                                                             │                                                                                                    
 └─────────────────────────────────────────────────────────────────────────────┘
   
 ---                                                                                                                                                                                 

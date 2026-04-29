@@ -25,16 +25,16 @@ High-Level Architecture
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                          PRODUCER LAYER                                  │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐         ┌─────────┐                 │
-│  │Service A│ │Service B│ │Service C│   ...   │Service N│                  │   
-│  └────┬────┘ └────┬────┘ └────┬────┘         └────┬────┘                  │
-│       │            │            │                    │                    │
+│  │Service A│ │Service B│ │Service C│   ...   │Service N│                 │   
+│  └────┬────┘ └────┬────┘ └────┬────┘         └────┬────┘                 │
+│       │           │           │                   │                      │
 │  ┌────▼────┐ ┌────▼────┐ ┌────▼────┐         ┌────▼────┐                  │
 │  │  Agent  │ │  Agent  │ │  Agent  │   ...   │  Agent  │                  │
 │  │(Vector) │ │(Vector) │ │(Vector) │         │(Vector) │                  │
 │  └────┬────┘ └────┬────┘ └────┬────┘         └────┬────┘                  │
-└───────┼────────────┼────────────┼──────────────────┼─────────────────────┘
-│            │            │                    │
-▼            ▼            ▼                    ▼
+└───────┼───────────┼───────────┼───────────────────┼───────────────────────┘
+        │           │            │                    │
+        ▼           ▼            ▼                    ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                         KAFKA CLUSTER                                    │
 │                                                                          │
@@ -45,8 +45,8 @@ High-Level Architecture
 │   20-25 brokers, NVMe SSDs, 10Gbps+ NICs                               │
 │                                                                          │
 └─────┬──────────────────┬──────────────────┬──────────────────────────────┘
-      │                  │                    │
-      ▼                  ▼                        ▼
+      │                  │                  │
+      ▼                  ▼                  ▼
 ┌───────────┐    ┌──────────────┐    ┌──────────────┐
 │  FLOW 1   │    │   FLOW 2     │    │   FLOW 3     │
 │  Live Tail│    │ Regex Query  │    │ Analytics    │
@@ -59,7 +59,7 @@ Three independent consumer paths off the same Kafka topics. They don't interfere
 Ingestion Layer
 
 Log Agents (per host)
-
+```
 ┌─────────────────────────────────────────────┐
 │              Application Host                │
 │                                              │
@@ -85,6 +85,7 @@ Log Agents (per host)
 │  TCP/gRPC
 ▼
 Kafka
+```
 
 Why Vector over Filebeat/Fluentd:
 - Rust-based, single binary, ~10x less memory than Fluentd
@@ -104,7 +105,7 @@ Log envelope format (what the agent sends):
 "msg":       "charge failed: card_declined for user_id=98712"
 }
 
-Two timestamps because they solve different problems. ts is what the developer cares about (event ordering). ingest_ts is what the system cares about (data placement, late-arrival
+Two timestamps because they solve different problems. **ts** is what the developer cares about (event ordering). **ingest_ts** is what the system cares about (data placement, late-arrival
 detection).
 
 Kafka Cluster
@@ -138,16 +139,16 @@ Why 6-hour retention (not 48):
 
   ---
 Flow 1: Real-Time Tail (Live Debugging)
-
+```
 ┌──────────┐       ┌──────────────────────────────────────┐
 │  Kafka   │       │         Tail Service (cluster)       │
 │  Topic:  │       │                                      │
 │  logs.   │──────▶│  ┌──────────────────────────────┐    │
-│  payment │       │  │   Kafka Consumer (per topic)  │   │
-│  -api    │       │  │   reads at tail of partition   │   │
-│          │       │  └──────────┬─────────────────────┘   │
-└──────────┘       │             │                         │
-│    ┌────────▼────────┐                                   │
+│  payment │       │  │   Kafka Consumer (per topic) │    │
+│  -api    │       │  │   reads at tail of partition │    │
+│          │       │  └──────────┬───────────────────┘    │
+└──────────┘       │             │                        │
+│    ┌────────▼────────┐                                  │
 │    │  Subscription   │                 │
 │    │  Router         │                 │
 │    │                 │                 │
@@ -168,6 +169,7 @@ Flow 1: Real-Time Tail (Live Debugging)
 │     │    │
 ▼     ▼    ▼
 Browser/CLI/Dashboard
+```
 
 How it works:
 
@@ -179,17 +181,17 @@ How it works:
 
 Key design decisions:
 
-- Consumer sharing. If 20 developers are tailing the same service, you don't create 20 Kafka consumers. One consumer reads the topic and fans out to 20 WebSockets. This keeps Kafka
+- Consumer sharing. If 20 developers are tailing the same service, you don't create 20 Kafka consumers. **One consumer reads the topic and fans out to 20 WebSockets**. This keeps Kafka
   consumer count manageable.
-- Backpressure per subscriber. A slow WebSocket client (bad network) must not block other subscribers. Each subscriber gets a bounded ring buffer (e.g., 10,000 lines). If it fills,
+- Backpressure per subscriber. A slow WebSocket client (bad network) must not block other subscribers. Each subscriber gets a **x**. If it fills,
   oldest lines are dropped for that subscriber only. The client sees a "X lines dropped" marker.
-- Filter evaluation order. Cheapest filters first: log level (enum comparison) → keyword (string contains) → regex (expensive). Short-circuit: if level doesn't match, skip regex
-  evaluation.
+  - Filter evaluation order. Cheapest filters first: log level (enum comparison) → keyword (string contains) → regex (expensive). Short-circuit: if level doesn't match, skip regex
+    evaluation. 
 
 Scaling:
 
 20 Tail Service instances behind a load balancer.
-Each instance handles subscriptions for a subset of topics.
+Each instance **handles subscriptions for a subset of topics.**
 Sticky routing: all subscribers for topic X go to the same instance
 (so only one Kafka consumer per topic exists cluster-wide).
 
@@ -205,7 +207,7 @@ Edge cases:
 │ Service produces 500 MB/s, subscriber's regex   │ Regex timeout: 1ms per line. Lines exceeding timeout are skipped. Use RE2 (linear-time guarantee).                          │
 │ is slow                                         │                                                                                                                             │
 ├─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 1000 subscribers on one service                 │ Fan-out via broadcast. Ring buffers per subscriber. If still bottlenecked, shard by partition.                              │
+│ 1000 subscribers on one service                 │ Fan-out via broadcast. **Ring buffers per subscriber**. If still bottlenecked, shard by partition.                          │
 ├─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Subscriber asks for a service that doesn't      │ Return error immediately (topic doesn't exist in Kafka).                                                                    │
 │ exist                                           │                                                                                                                             │
@@ -233,10 +235,10 @@ logquery --service payment-api --regex "card_declined.*user_id=\d+" \
 
 This is a search over 2 hours of ingested data. For a service producing 1% of total traffic: 2 hours × 100 GB/hr = 200 GB compressed to scan. This requires a purpose-built query
 engine.
-
+```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                     REGEX QUERY ENGINE                               │
-│                                                                      │
+│                     REGEX QUERY ENGINE                              │ 
+│                                                                     │
 │  ┌──────────┐     ┌──────────────┐     ┌─────────────────────────┐  │
 │  │  Query   │     │   Chunk      │     │     S3 Object Store     │  │
 │  │  API     │────▶│   Planner    │────▶│                         │  │
@@ -251,7 +253,7 @@ engine.
 │       ▲           │    scan cost │     │          chunk_001.zst  │  │
 │       │           │              │     │          ...            │  │
 │       │           └──────┬───────┘     └─────────────────────────┘  │
-│       │                  │                          ▲                 │
+│       │                  │                          ▲               │
 │       │                  ▼                          │                 │
 │       │           ┌──────────────┐                  │                 │
 │       │           │   Scatter    │    Download +    │                 │
@@ -266,10 +268,10 @@ engine.
 │       │         ▼        ▼        ▼                                   │
 │       │    ┌────────┐┌────────┐┌────────┐                            │
 │       │    │Worker 1││Worker 2││Worker N│    50-100 stateless        │
-│       │    │        ││        ││        │    workers (spot instances) │
+│       │    │        ││        ││        │    workers (spot instances)│
 │       │    │ zstd   ││ zstd   ││ zstd   │                            │
-│       │    │ decomp ││ decomp ││ decomp │    Each: 8 vCPU, 16GB RAM │
-│       │    │ + RE2  ││ + RE2  ││ + RE2  │    Scans ~500MB/s/core    │
+│       │    │ decomp ││ decomp ││ decomp │    Each: 8 vCPU, 16GB RAM  │
+│       │    │ + RE2  ││ + RE2  ││ + RE2  │    Scans ~500MB/s/core     │
 │       │    │ scan   ││ scan   ││ scan   │                            │
 │       │    └───┬────┘└───┬────┘└───┬────┘                            │
 │       │        │         │         │                                  │
@@ -277,11 +279,13 @@ engine.
 │       │    ┌────────────────────────────┐                             │
 │       │    │   Result Aggregator        │                             │
 │       └────│   • Merge + sort by ts     │                             │
-│            │   • Stream to client       │                             │
-│            │   • Apply LIMIT if set     │                             │
-│            └────────────────────────────┘                             │
+│            │   • Stream to client       │                            │
+│            │   • Apply LIMIT if set     │                            │
+│            └────────────────────────────┘                            │
 │                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
+
+```
 
 Chunk Layout on S3
 
@@ -365,7 +369,7 @@ decompressor = zstd.StreamDecompressor()
 
       return matches
 
-Step 5 — Gather & Stream:
+Step 5 — Gather & **Stream**:
 Results from all workers are merge-sorted by timestamp and
 streamed to the client as they arrive (not waiting for all
 workers to finish). Client sees first results in ~2-3 seconds.
@@ -386,10 +390,10 @@ First results: ~2 seconds (streaming as chunks complete)
 For a smaller service (0.1% of traffic, 10 GB/hr), the same query completes in < 1 second.
 
 Critical Safeguards
-
+```
 ┌───────────────────────────────────────────────────┐
-│              QUERY GUARDRAILS                       │
-│                                                     │
+│              QUERY GUARDRAILS                      │
+│                                                    │
 │  1. RE2 only (no PCRE backtracking)                │
 │     → guarantees linear-time regex execution        │
 │     → rejects lookaheads, backreferences            │
@@ -410,14 +414,14 @@ Critical Safeguards
 │     → reject invalid regex before dispatching       │
 │     → estimate selectivity if possible              │
 └───────────────────────────────────────────────────┘
-
+```
   ---
 Flow 3: Analytics Export (24-48hr Tar)
-
+```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    ANALYTICS EXPORT PIPELINE                      │
-│                                                                   │
-│   ┌─────────┐     ┌──────────────┐     ┌──────────────────────┐ │
+│                    ANALYTICS EXPORT PIPELINE                     │
+│                                                                  │
+│   ┌─────────┐      ┌──────────────┐     ┌──────────────────────┐ │
 │   │  Export  │     │  Manifest    │     │   S3 Chunk Store     │ │
 │   │  API /   │────▶│  Builder     │────▶│                      │ │
 │   │  Cron    │     │              │     │  Lists all chunks    │ │
@@ -430,7 +434,7 @@ Flow 3: Analytics Export (24-48hr Tar)
 │   │  to      │     │              │                │              │
 │   │  }       │     └──────────────┘                │              │
 │   └─────────┘                                      │              │
-│                                                     ▼              │
+│                                                    ▼              │
 │                                    ┌────────────────────────────┐ │
 │                                    │   Tar Builder (batch job)  │ │
 │                                    │                            │ │
@@ -446,7 +450,7 @@ Flow 3: Analytics Export (24-48hr Tar)
 │                                    │                            │ │
 │                                    │  Streams directly:         │ │
 │                                    │  S3 GET → decompress →     │ │
-│                                    │  tar → gzip → S3 PUT      │ │
+│                                    │  tar → gzip → S3 PUT       │ │
 │                                    │  (never holds full dataset │ │
 │                                    │   in memory)               │ │
 │                                    └──────────────┬─────────────┘ │
@@ -465,7 +469,7 @@ Flow 3: Analytics Export (24-48hr Tar)
 │                                    │    via Slack/email/API     │ │
 │                                    └────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────┘
-
+```
 Export Granularity
 
 A single 48-hour tar of ALL services would be ~160 TB compressed. That's not practical as one file. The export is per-service (or per-service-group):
@@ -548,45 +552,45 @@ The analytics team can extract specific hours without decompressing the entire a
 Chunk Writer — The Shared Component
 
 The chunk writer serves both Flow 2 and Flow 3. It's the most critical pipeline component.
-
+```
 ┌───────────────────────────────────────────────────────────────┐
-│                      CHUNK WRITER                              │
-│                                                                │
+│                      CHUNK WRITER                             │
+│                                                               │
 │  Kafka Consumer Group: "chunk-writer"                         │
 │  Instances: 80-120 (one consumer per Kafka partition)         │
-│                                                                │
-│  Per partition:                                                │
+│                                                               │
+│  Per partition:                                               │
 │  ┌────────────────────────────────────────────────────┐       │
-│  │  In-memory buffer (per service × time bucket)       │       │
-│  │                                                     │       │
+│  │  In-memory buffer (per service × time bucket)      │       │
+│  │                                                    │       │
 │  │  Key: (service=payment-api, bucket=14:00-14:04)    │       │
-│  │  Value: CompressedBuffer (zstd streaming)           │       │
-│  │                                                     │       │
-│  │  Flush when:                                        │       │
-│  │    buffer.compressed_size >= 64 MB  OR              │       │
-│  │    buffer.age >= 5 minutes          OR              │       │
-│  │    process is shutting down                          │       │
-│  │                                                     │       │
-│  │  On flush:                                          │       │
-│  │    1. Finalize zstd frame                           │       │
-│  │    2. S3 PUT to deterministic key                   │       │
-│  │    3. Commit Kafka offset                           │       │
-│  │    4. Reset buffer                                  │       │
+│  │  Value: CompressedBuffer (zstd streaming)          │       │
+│  │                                                    │       │
+│  │  Flush when:                                       │       │
+│  │    buffer.compressed_size >= 64 MB  OR             │       │
+│  │    buffer.age >= 5 minutes          OR             │       │
+│  │    process is shutting down                        │       │
+│  │                                                    │       │
+│  │  On flush:                                         │       │
+│  │    1. Finalize zstd frame                          │       │
+│  │    2. S3 PUT to deterministic key                  │       │
+│  │    3. Commit Kafka offset                          │       │
+│  │    4. Reset buffer                                 │       │
 │  └────────────────────────────────────────────────────┘       │
-│                                                                │
-│  Ordering guarantee:                                           │
+│                                                               │
+│  Ordering guarantee:                                          │
 │    Within a chunk, lines are in Kafka offset order.           │
 │    Chunks are non-overlapping in time (by flush boundary).    │
-│                                                                │
-│  Failure handling:                                             │
-│    • S3 PUT fails → retry 3x with backoff → DLQ the batch    │
+│                                                               │
+│  Failure handling:                                            │
+│    • S3 PUT fails → retry 3x with backoff → DLQ the batch     │
 │    • Consumer rebalance → flush open buffers before revoking  │
 │    • Process crash → uncommitted offsets mean Kafka replays   │
 │      → duplicate data in S3, but chunk key is deterministic   │
 │      → S3 PUT overwrites with identical data (idempotent)     │
-│                                                                │
+│                                                               │
 └───────────────────────────────────────────────────────────────┘
-
+```
 Why 5-minute buckets:
 - Granular enough for time-range queries (2-hour query scans ~24 buckets, not 2 huge files)
 - Coarse enough that S3 LIST operations return a manageable number of objects
@@ -648,7 +652,7 @@ Chunk Writer
 ├─────────────────────────────────────────┼───────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ S3 outage                               │ Chunks can't be written       │ Kafka retention (6hr) buffers the gap. Alert immediately. Writer retries indefinitely.              │
 ├─────────────────────────────────────────┼───────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Consumer rebalance storm                │ Temporary pause in chunk      │ cooperative-sticky assignor. Flush buffers on partition revocation.                                 │
+│ Consumer rebalance storm                │ Temporary pause in chunk      │ **cooperative-sticky assignor**. Flush buffers on partition revocation.                             │
 │                                         │ writing                       │                                                                                                     │
 ├─────────────────────────────────────────┼───────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Late-arriving logs (30+ min old         │ Logs in wrong time bucket     │ Use ingestion timestamp for bucket placement, event timestamp for sorting within chunk. Metadata    │
@@ -685,7 +689,7 @@ Export Pipeline
 Monitoring the Monitoring
 
 The log aggregation service itself needs monitoring. This creates a meta-problem: where do the log service's own logs go?
-
+```
 ┌─────────────────────────────────────────────────────────┐
 │  SELF-MONITORING (avoid circular dependency)             │
 │                                                          │
@@ -745,10 +749,10 @@ Cost Estimate (AWS, Monthly)
 │  Per GB ingested: ~$0.0055/GB                            │
 │  (Datadog at this volume: ~$300K+/month)                 │
 └─────────────────────────────────────────────────────────┘
-
+```
   ---
 Summary: How the Three Flows Map to Components
-
+```
                                       ┌─────────────────┐
                                 ┌────▶│ FLOW 1: Tail    │  Kafka → WS fan-out
                                 │     │ Real-time view  │  Latency: <1s
@@ -764,7 +768,7 @@ Summary: How the Three Flows Map to Components
                                 └────▶│ FLOW 3: Export  │  S3 → tar builder → output S3
                                       │ Analytics tar   │  Latency: 10-30 min
                                       └─────────────────┘
-
+```
 Shared infra:
 • Kafka:        transit buffer (6hr), decouples all three flows
 • Chunk Writer: Kafka → S3, serves Flow 2 (scan) and Flow 3 (export)

@@ -902,7 +902,7 @@ loop:
 ### Ordering guarantees
 
 - Kafka: per-partition.
-- Pulsar: per-partition; per-key via key-shared subscription (without single-consumer bottleneck).
+- Pulsar: per-partition; **per-key via key-shared subscription** (without single-consumer bottleneck).
 - Redis Streams: per-stream.
 - SQS FIFO: per MessageGroupId.
 - SQS Standard: no ordering.

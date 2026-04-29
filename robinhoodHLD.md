@@ -234,13 +234,15 @@ GET    /v1/options/chains/{symbol}           Options chain
 POST   /v1/options/orders                    Options multi-leg order
 ```
 
-**Idempotency:** every mutating call (place order, deposit) requires `Idempotency-Key` header; OMS dedupes for 24h via Redis. A retried order with the same key returns the original order's state — it does not create a duplicate.
+**Idempotency:** every mutating call (place order, deposit) requires `Idempotency-Key` header; OMS dedupes for 24h via Redis. 
+A retried order with the same key returns the original order's state — it does not create a duplicate.
 
 ### Place-Order request (annotated)
 
-```json
+json
 POST /v1/orders
-Idempotency-Key: 9f14ab-...  
+Idempotency-Key: 9f14ab-...
+```
 {
   "account_id": "acct_abc",
   "symbol": "AAPL",
@@ -329,7 +331,8 @@ settlement_date   date                -- T+1 post-2024
 ```
 account_id  symbol  qty  avg_cost  last_updated
 ```
-Primary source of truth is the append-only `fills` + `corporate_actions` log. Positions table is a materialized view, rebuildable at any time — critical for audit and "we disagree with the user's balance" incidents.
+Primary source of truth is the append-only `fills` + `corporate_actions` log. Positions table is a materialized view, 
+rebuildable at any time — critical for audit and "we disagree with the user's balance" incidents.
 
 ### ledger (double-entry, append-only, WORM)
 ```
@@ -367,7 +370,8 @@ Tax lots are created on buys and consumed on sells according to user-selected lo
 - **Crypto venues** (Coinbase, FTX-successors, internal liquidity) over WS/FIX.
 - **News** (Benzinga, Reuters) over HTTP/push.
 
-All feeds arrive on dedicated multicast (inside a co-lo / AWS Direct Connect). Ingestor servers are pinned NUMA + SR-IOV network, running C++/Rust decoders with kernel-bypass (DPDK / Solarflare) for lowest jitter.
+All feeds arrive on dedicated multicast (inside a co-lo / AWS Direct Connect). Ingestor servers are pinned NUMA + SR-IOV network, 
+running C++/Rust decoders with kernel-bypass (DPDK / Solarflare) for lowest jitter.
 
 ### Pipeline stages
 
@@ -382,7 +386,8 @@ Exchange  →  Ingestor  →  Normalizer  →  Sequencer  →  Kafka (partitione
 
 - **Sequencer** assigns a monotonic `seq` per symbol so downstream can detect gaps.
 - **Dedup** across SIP + direct feeds: direct feed wins on tiebreak, SIP is failover.
-- **Slow consumers** never block producers — Kafka bounded retention + unbounded disk; fanout consumers that fall behind are disconnected, not buffered in memory.
+- **Slow consumers** never block producers — Kafka bounded retention + unbounded disk; fanout consumers that fall behind are disconnected, 
+  not buffered in memory.
 
 ### Candle aggregation
 - Streaming aggregation in Flink: rolling 1-minute windows → emit on close → stored in Druid for fast historical queries.
@@ -452,8 +457,8 @@ Client sees ack only **after** WAL quorum commit → zero-loss guarantee for acc
                                          ▼ (fills arrive)
                                 ┌──────────────────┐
                                 │ partially_filled │
-                                └─────┬────────────┘
-                                      ▼
+                                └───────────┬──────┘
+                                            ▼
                      ┌──────────┐  ┌─────────────┐  ┌────────┐
                      │ filled   │  │  cancelled  │  │expired │  (all terminal)
                      └──────────┘  └─────────────┘  └────────┘

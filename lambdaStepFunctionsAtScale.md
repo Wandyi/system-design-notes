@@ -1,6 +1,7 @@
 # AWS Lambda & Step Functions at Production Scale
 
-Staff-level scenarios, patterns, and corner cases for building scalable applications with Lambda and Step Functions. Focuses on what breaks at scale, where the service boundaries are sharp, and how to design around them.
+Staff-level scenarios, patterns, and corner cases for building scalable applications with Lambda and Step Functions. 
+Focuses on what breaks at scale, where the service boundaries are sharp, and how to design around them.
 
 ---
 
