@@ -464,7 +464,8 @@ For very-high-throughput simple fanout: SNS+SQS retains a place (lower per-event
 
 ### 5.1 The problem
 
-Financial system. Account balance updates: "deposit $100", "withdraw $50". Must process in order or the user briefly goes overdrawn (and the system might reject). Trade events for the same security must serialize. Ledger entries must apply in correct order.
+Financial system. Account balance updates: "deposit $100", "withdraw $50". Must process in order or the user briefly goes overdrawn (and the system might reject). 
+Trade events for the same security must serialize. Ledger entries must apply in correct order.
 
 ### 5.2 FIFO mechanics
 
@@ -514,7 +515,8 @@ Two patterns:
 5-min window: messages with same dedup id within 5 min → second silently dropped.
 ```
 
-This is **exactly-once-processing**, not exactly-once-delivery. The message is delivered once to *one consumer*. If you process and the consumer crashes before deleting → another consumer pulls the same message after visibility timeout. Still need idempotency at consumer.
+This is **exactly-once-processing**, not exactly-once-delivery. The message is delivered once to *one consumer*. 
+If you process and the consumer crashes before deleting → another consumer pulls the same message after visibility timeout. Still need idempotency at consumer.
 
 ### 5.6 The visibility timeout in FIFO
 
@@ -715,7 +717,7 @@ Internal event → Lambda decides webhook target → SQS queue (per-customer)
 - Per-customer queue: isolation. One slow customer's queue grows; doesn't block others.
 - Worker per customer: bounded concurrency.
 
-But: thousands of queues becomes operational nightmare.
+But: **thousands of queues** becomes operational nightmare.
 
 ### 7.4 The single-queue + per-customer concurrency pattern
 
@@ -827,6 +829,21 @@ Lambda DLQ:        Lambda invocation errors after retries (deprecated; use desti
 Lambda destination: more flexible than DLQ; on success or failure.
 EventBridge DLQ:   per-target; events that target couldn't accept after retries.
 Step Functions:    failure path within state machine.
+```
+
+
+```aiexclude
+AWS Lambda Destinations are a feature for asynchronous invocations that route execution records (success or failure) to downstream services like SNS, SQS, EventBridge, or another Lambda function without additional code. They improve observability, enable event-driven architectures, and simplify error handling/retries. 
+Key Aspects of Lambda Destinations:
+Asynchronous Only: Destinations work specifically with asynchronous Lambda invocations, such as S3 events or SNS triggers.
+Configurable Conditions: You can configure onSuccess or onFailure scenarios to route records independently.
+Destinations Supported:
+Lambda Function: For further processing.
+SQS Queue: For holding failed invocations.
+SNS Topic: For triggering notifications.
+EventBridge Event Bus: For workflow orchestration.
+Payload Data: The destination receives a JSON record containing details about the invocation, including request/response payloads, error messages, and context.
+Alternative to DLQ: While Lambda supports Dead Letter Queues (DLQs), Destinations are preferred for more visibility and control, often replacing the need for SQS DLQs
 ```
 
 Each must be configured. Forgetting DLQ on any of these = silent data loss.
@@ -1262,7 +1279,8 @@ For 10M+ events/sec analytics ingestion:
 
 ### 13.1 The problem
 
-Operational database (Postgres / DynamoDB / Aurora) is source of truth. Need to fan out changes to: search index (OpenSearch), data warehouse (Redshift/Snowflake), cache invalidation, downstream microservices.
+Operational database (Postgres / DynamoDB / Aurora) is source of truth. Need to fan out changes to: search index (OpenSearch), 
+data warehouse (Redshift/Snowflake), cache invalidation, downstream microservices.
 
 ### 13.2 The patterns
 
@@ -1274,6 +1292,28 @@ RDS Activity Streams → Kinesis.
 ```
 
 ### 13.3 EventBridge Pipes for DynamoDB
+
+**Amazon EventBridge Pipes** provides a simple, consistent, and cost-effective way to create point-to-point integrations between event producers and consumers, 
+reducing the need for custom, complex, or boilerplate integration code. It enables filtering, optional enrichment, and delivery of data from various sources 
+(e.g., Kinesis, SQS, DynamoDB) to over 14 AWS services.
+
+**Key Components and Features**
+Source: Polls data from sources such as Amazon Kinesis, Amazon DynamoDB, Amazon SQS, Amazon Managed Streaming for Apache Kafka (MSK), and self-managed Kafka.
+Filtering: Allows you to define filters so the pipe only processes a subset of events, saving on costs and reducing unnecessary processing.
+Enrichment: Enables enhancing the event data before it reaches the target, often by calling AWS Lambda, Step Functions, or API Gateway.
+Target: Delivers the processed event to a target, such as an EventBridge Bus, Lambda, Kinesis Stream, or SQS queue.
+Transformations: Reshapes the payload into a specific format using input templates before it reaches the target.
+
+**Pipes vs. Event Buses**
+Pipes are designed for direct, point-to-point integration between a single source and a single target.
+Event Buses are designed for many-to-many routing, allowing a single event to be routed to multiple targets.
+They are often used together, such as using a pipe to send filtered data from a DynamoDB stream to an EventBridge bus.
+
+**Common Use Cases**
+Real-time Processing: Connecting DynamoDB or Kinesis streams to target services like Lambda for immediate processing.
+API Enrichment: Enriching events with additional data by calling a third-party API or AWS service before delivery.
+Filtering Data: Selecting specific, high-value records from high-volume data streams, such as Filtering SQS messages.
+Queue-to-Queue Integration: Moving messages between SQS queues with transformation
 
 ```
 DynamoDB Stream → EventBridge Pipe →
@@ -1443,7 +1483,7 @@ One slow consumer (or one hot tenant on a shared queue) consumes all the consume
 
 **Sharded queues**: hash tenant_id → 32 queues; each consumer pulls from one shard. Bounded "blast radius" when one tenant misbehaves.
 
-**Concurrency limits per tenant**: at consumer (Lambda concurrency, semaphore), enforce per-tenant max in-flight.
+**Concurrency limits per tenant**: at consumer (Lambda concurrency, semaphore), **enforce per-tenant max in-flight**.--> imp
 
 **Time-based throttling**: token bucket per tenant; rate-limit requests.
 
@@ -1783,7 +1823,7 @@ EventBridge:   ~500 ms p50 from PutEvents to rule target invocation.
                 Cold-start spikes possible.
 ```
 
-EventBridge is **slower than SNS/SQS** because of the rule-matching engine. For latency-critical event paths, SNS direct or SQS direct is faster.
+EventBridge is **slower than SNS/SQS** because of the rule-matching engine. For latency-critical event paths, **SNS direct or SQS direct is faster**.
 
 ### 22.4 Batching
 
@@ -1829,6 +1869,29 @@ EventBridge: $1/M custom events; AWS-source events on default bus free.
 - **Compress payloads** if large; or store body in S3 + send pointer.
 - **Dedup at source** for SQS FIFO content-based dedup; don't pay for duplicates.
 
+
+```aiexclude
+AWS VPC Endpoints enable private connectivity between your Virtual Private Cloud (VPC) and supported AWS services or PrivateLink-powered services without using an 
+internet gateway, NAT device, or VPN. They keep traffic within the Amazon network, enhancing security by eliminating the need to expose traffic to the public internet. 
+
+Key Types of VPC Endpoints:
+Interface Endpoints (AWS PrivateLink): Create an Elastic Network Interface (ENI) with a private IP address within your subnet to route traffic to services like SNS, 
+SQS, Kinesis, and many AWS services. They cost money.
+Gateway Endpoints: Act as a target in your route table for traffic destined for Amazon S3 or DynamoDB. They are free of charge. 
+
+Key Benefits & Features:
+Enhanced Security: Instances do not require public IP addresses.
+Private Connectivity: Traffic does not traverse the public internet.
+Improved Performance: Reduces latency compared to traversing the internet.
+Endpoint Policies: You can define JSON policies to restrict access to specific services.
+Managed Services: These are horizontally scaled, redundant, and highly available. 
+
+Common Use Cases:
+Connecting private subnet instances to S3 or DynamoDB (Gateway Endpoints).
+Accessing API-based services like Lambda or Secrets Manager (Interface Endpoints).
+Connecting to third-party services via AWS Marketplace privately. 
+
+```
 ### 23.4 Cost monitoring
 
 CloudWatch metrics, AWS Cost Explorer, S3 Storage Lens-equivalent for messaging (just normal cost dashboard). No "Storage Lens" for messaging; build dashboards.

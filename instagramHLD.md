@@ -114,18 +114,18 @@ Bandwidth:
                                          │  Edge Network)   │
                                          └────────┬─────────┘
                                                   │
-                                   ┌──────────────┴──────────────┐
-                                   │                             │
+                                   ┌──────────────┴─────────────┐
+                                   │                            │
                           ┌────────▼────────┐          ┌────────▼────────┐
                           │   API Gateway   │          │  WebSocket LB   │
-                          │  (REST / GraphQL)│          │  (DMs, Live)    │
+                          │ (REST / GraphQL)│          │  (DMs, Live)    │
                           └────────┬────────┘          └────────┬────────┘
-                                   │                             │
-                    ┌──────────────┼──────────────┐              │
-                    │              │              │              │
+                                   │                            │
+                    ┌──────────────┼──────────────┐             │
+                    │              │              │             │
             ┌───────▼──────┐ ┌────▼─────┐ ┌─────▼──────┐ ┌────▼──────┐
-            │ Post Service │ │  Feed    │ │  User /    │ │  Messaging │
-            │              │ │  Service │ │  Social    │ │  Service   │
+            │ Post Service │ │  Feed    │ │  User /    │ │  Messaging│
+            │              │ │  Service │ │  Social    │ │  Service  │
             └───────┬──────┘ └────┬─────┘ │  Graph     │ └────┬──────┘
                     │             │       └─────┬──────┘      │
          ┌──────────┤             │             │             │
@@ -135,7 +135,7 @@ Bandwidth:
    │ Processing │   │      │  Cache     │ │  Cache    │      │
    │  Pipeline  │   │      │  (Redis)   │ │ (Redis)   │      │
    └─────┬──────┘   │      └──────┬─────┘ └────┬──────┘      │
-         │          │             │             │             │
+         │          │             │            │             │
    ┌─────▼──────┐   │      ┌──────▼─────────────▼──────┐      │
    │  Object    │   │      │       PostgreSQL /         │      │
    │  Storage   │   │      │       Cassandra /          │◄─────┘
@@ -185,7 +185,7 @@ GET    /v1/posts/{post_id}
           created_at, location, tags }
 
 DELETE /v1/posts/{post_id}
-  → 204
+  → 204 No Content
 
 POST   /v1/posts/{post_id}/like
   → 200 { liked: true, like_count }     (idempotent)
@@ -195,7 +195,7 @@ DELETE /v1/posts/{post_id}/like
 
 POST   /v1/posts/{post_id}/comments
   Body: { text: string, reply_to?: comment_id }
-  → 201 { comment_id, text, user_id, created_at }
+  → 201 (Created) { comment_id, text, user_id, created_at }
 
 GET    /v1/posts/{post_id}/comments?cursor=X&limit=20
   → 200 { comments: [...], next_cursor }
@@ -447,7 +447,7 @@ Users upload raw photos (10MB DSLR JPEGs, HEIC from iPhones) and videos (4K, var
     │ ←────────────────────────────────────────────────│                       │
     │                            │                     │                       │
     │  POST /media/{id}/complete │                     │  S3 Event Notification│
-    │ ─────────────────────────→ │                     │ ─────────────────────→ │
+    │ ─────────────────────────→ │                     │─────────────────────→ │
     │                            │ Publish to Kafka    │                       │
     │                            │ ──────────────────────────────────────────→ │
     │  { status: "processing" }  │                     │                       │
@@ -459,12 +459,12 @@ Users upload raw photos (10MB DSLR JPEGs, HEIC from iPhones) and videos (4K, var
     │                            │                     │       │ 1080x1080 │   │
     │                            │                     │       │ original  │   │
     │                            │                     │       └─────┬─────┘   │
-    │                            │                     │             │ Write    │
+    │                            │                     │             │ Write   │
     │                            │                     │  ←──────────┘ variants│
     │                            │                     │             to S3     │
     │                            │                     │                       │
     │                            │     Update DB:      │                       │
-    │                            │  ←──────────────────────────────────────── │
+    │                            │  ←────────────────────────────────────────  │
     │                            │   status=ready,     │                       │
     │                            │   variant URLs      │                       │
 ```
@@ -532,11 +532,11 @@ Output variants:
   ┌──────────────┬────────────┬────────────┬──────────────┐
   │ Resolution   │ Bitrate    │ Codec      │ Use case     │
   ├──────────────┼────────────┼────────────┼──────────────┤
-  │ 1080p        │ 5 Mbps    │ H.264      │ Wi-Fi / HD   │
-  │ 720p         │ 2.5 Mbps  │ H.264      │ LTE          │
-  │ 480p         │ 1 Mbps    │ H.264      │ 3G / slow    │
-  │ 240p         │ 400 Kbps  │ H.264      │ Extreme slow │
-  │ Audio only   │ 128 Kbps  │ AAC        │ Minimize data│
+  │ 1080p        │ 5 Mbps     │ H.264      │ Wi-Fi / HD   │
+  │ 720p         │ 2.5 Mbps   │ H.264      │ LTE          │
+  │ 480p         │ 1 Mbps     │ H.264      │ 3G / slow    │
+  │ 240p         │ 400 Kbps   │ H.264      │ Extreme slow │
+  │ Audio only   │ 128 Kbps   │ AAC        │ Minimize data│
   └──────────────┴────────────┴────────────┴──────────────┘
 
 Each variant is segmented into HLS chunks (2-4 second segments)
@@ -684,15 +684,15 @@ Thundering herd:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Hybrid Fan-Out                        │
+│                    Hybrid Fan-Out                       │
 │                                                         │
-│  "Regular" users (< 10K followers):  Fan-out-on-WRITE  │
+│  "Regular" users (< 10K followers):  Fan-out-on-WRITE   │
 │  "Celebrity" users (> 10K followers): Fan-out-on-READ   │
 │                                                         │
 │  The 0.1% of users who are celebrities produce ~30%     │
 │  of all feed content but would cause 99% of fan-out     │
 │  write volume. By excluding them from push, we          │
-│  eliminate the explosion while keeping most feeds fast.  │
+│  eliminate the explosion while keeping most feeds fast. │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -763,7 +763,7 @@ Raw candidate pool (500 posts from fan-out + celebrity pull)
 │                                      │
 │  - Diversity: no more than 2         │
 │    consecutive posts from same user  │
-│  - Freshness boost: < 1hr gets 1.5x │
+│  - Freshness boost: < 1hr gets 1.5x  │
 │  - Type mixing: interleave photo/    │
 │    video/carousel                    │
 │  - Seen suppression: demote posts    │
@@ -771,7 +771,7 @@ Raw candidate pool (500 posts from fan-out + celebrity pull)
 └──────────────┬───────────────────────┘
                │
                ▼
-         Top 20 posts → client
+        Top 20 posts → client
 ```
 
 ---
@@ -837,7 +837,7 @@ Race condition: Alice follows Bob, then immediately unfollows Bob.
   
   Result: Bob's follower count is wrong, Alice sees Bob's posts in feed despite unfollowing.
 
-Solution: Use Kafka with per-user partitioning.
+Solution: Use **Kafka with per-user partitioning.**
   All follow/unfollow events for Alice go to the same Kafka partition.
   A single consumer processes them in order → no interleaving.
   Both tables updated atomically from the same consumer.
@@ -852,25 +852,25 @@ Meta/Facebook built TAO (The Associations and Objects cache), and Instagram uses
                     │         Graph Cache          │
                     │       (TAO-like layer)       │
                     │                              │
-                    │  Objects: user profiles       │
-                    │  Associations: follow edges   │
+                    │  Objects: user profiles      │
+                    │  Associations: follow edges  │
                     │                              │
-                    │  API:                         │
-                    │   assoc_get(alice, FOLLOWS)   │
-                    │   → [bob, carol, dave, ...]   │
+                    │  API:                        │
+                    │   assoc_get(alice, FOLLOWS)  │
+                    │   → [bob, carol, dave, ...]  │
                     │                              │
-                    │   assoc_count(bob, FOLLOWED_BY)│
-                    │   → 150,000                   │
+                    │ assoc_count(bob, FOLLOWED_BY)│
+                    │   → 150,000                  │
                     │                              │
-                    │   assoc_range(bob, FOLLOWED_BY,│
-                    │     cursor, 50)               │
-                    │   → [user_1, user_2, ...]     │
+                    │ assoc_range(bob, FOLLOWED_BY,│
+                    │     cursor, 50)              │
+                    │   → [user_1, user_2, ...     │
                     │                              │
-                    │  Implementation:              │
-                    │   Leader cache (one per shard)│
-                    │   Follower caches (many, LRU) │
-                    │   Write-through to leader     │
-                    │   Read from nearest follower  │
+                    │ Implementation:              │
+                    │  Leader cache (one per shard)│
+                    │  Follower caches (many, LRU) │
+                    │  Write-through to leader     │
+                    │  Read from nearest follower  │
                     └─────────────────────────────┘
 
 Benefits:
@@ -1284,7 +1284,7 @@ Instagram cannot use auto-increment IDs at scale:
 Snowflake ID (64-bit):
   ┌───────────────────────────────────────────────────────┐
   │ 1 bit │    41 bits      │  10 bits   │   12 bits      │
-  │unused │ timestamp (ms)  │ machine ID │ sequence number │
+  │unused │ timestamp (ms)  │ machine ID │ sequence number│
   └───────────────────────────────────────────────────────┘
 
   41 bits of timestamp: ~69 years from epoch
@@ -1313,14 +1313,14 @@ Snowflake ID (64-bit):
                     │   Shard range: user_id % 256 = 0 │
                     └──────────────────────────────────┘
                     ┌──────────────────────────────────┐
-                    │          Shard 2                  │
-                    │   ...same topology...             │
+                    │          Shard 2                 │
+                    │   ...same topology...            │
                     │   Shard range: user_id % 256 = 1 │
                     └──────────────────────────────────┘
                     ...
                     ┌──────────────────────────────────┐
-                    │          Shard 256                │
-                    │   ...                             │
+                    │          Shard 256               │
+                    │   ...                            │
                     │  Shard range: user_id % 256 = 255│
                     └──────────────────────────────────┘
 
@@ -1607,8 +1607,8 @@ Solutions:
 Instagram (Meta) uses a cell-based architecture to contain blast radius.
 
 ┌─────────────────────────────────────────────────────────────┐
-│                    Global Layer                              │
-│  DNS, CDN, Global Load Balancer, Configuration Service       │
+│                    Global Layer                             │
+│  DNS, CDN, Global Load Balancer, Configuration Service      │
 └────────────┬────────────────────────────┬───────────────────┘
              │                            │
     ┌────────▼────────┐          ┌────────▼────────┐
@@ -1651,7 +1651,7 @@ Cross-cell only for:
 ┌──────────────────────────┬──────────────────────────────────────────────┐
 │ Failure                  │ Mitigation                                   │
 ├──────────────────────────┼──────────────────────────────────────────────┤
-│ Single API pod crash     │ Load balancer health check removes it in 5s.│
+│ Single API pod crash     │ Load balancer health check removes it in 5s. │
 │                          │ Other pods absorb traffic. No user impact.   │
 ├──────────────────────────┼──────────────────────────────────────────────┤
 │ Database primary failure │ Sync replica promoted in 10-30 seconds.      │
