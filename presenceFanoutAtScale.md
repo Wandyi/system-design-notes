@@ -3,7 +3,8 @@
 How to broadcast state changes to thousands (or millions) of subscribers simultaneously without melting under memory pressure, thread exhaustion, and lock contention. 
 Anchored on the canonical case — **a Discord-style guild presence update** — but the patterns generalize to Slack workspaces, MMO zones, stock tickers, sports score feeds, IoT fleet telemetry, and collaborative document cursors.
 
-The problem looks simple: "user X went online, tell everyone in the guild." It is not. At guild sizes of 1 M+ members, with 100 K state-change events per second across the platform, a naive fan-out collapses in three predictable ways. The job is to design a system where each of those collapse modes is structurally impossible, not just unlikely.
+The problem looks simple: "user X went online, tell everyone in the guild." It is not. At guild sizes of 1 M+ members, with 100 K state-change events per second across the platform, a naive fan-out collapses in three predictable ways. 
+The job is to design a system where each of those collapse modes is structurally impossible, not just unlikely.
 
 ---
 
@@ -81,7 +82,8 @@ Every pattern below targets one or more of these explicitly. The thesis: **fan-o
    State stores (Cassandra, Redis, Postgres) — only for cold/persistent state
 ```
 
-The most important architectural property: **the application service emits one logical event** ("user 123's presence is now `idle`") and is done. It does not enumerate recipients. The fan-out tier owns the fact that *some scope* is interested. The gateway tier owns the fact that *some connection* is in that scope.
+The most important architectural property: **the application service emits one logical event** ("user 123's presence is now `idle`") and is done. 
+It does not enumerate recipients. The fan-out tier owns the fact that *some scope* is interested. The gateway tier owns the fact that *some connection* is in that scope.
 
 The recipient enumeration is split across three places, each of which sees a small fraction of the work — the central insight that makes the architecture survive.
 
@@ -103,7 +105,8 @@ When a client opens a connection and subscribes to scope `g`, the gateway:
 1. Adds `conn_id` to its local `scope_id → connections` map.
 2. **Tells the fan-out tier** "this gateway is interested in scope g" — but only if it wasn't already subscribed by some other connection on the same host.
 
-That second step is the optimization that makes the whole thing work: **the fan-out tier sees one subscriber per (scope, gateway), not one per (scope, user)**. A guild with 1 M members spread across 200 gateway hosts has *200* subscribers in the fan-out tier — not 1 M.
+That second step is the optimization that makes the whole thing work: **the fan-out tier sees one subscriber per (scope, gateway), not one per (scope, user)**. 
+A guild with 1 M members spread across 200 gateway hosts has *200* subscribers in the fan-out tier — not 1 M.
 
 ### 3.2 Publish path
 
@@ -126,7 +129,8 @@ Two cost reductions stacked:
 
 ### 3.3 Why this beats Redis Pub/Sub naively
 
-Naive Redis Pub/Sub: `PUBLISH guild-g {payload}` → Redis dispatches to every subscriber. If every subscriber is a single connection, you're back to O(members). The fix is the same in any system: **gateways subscribe**, not connections. Whether the substrate is Redis, NATS, Kafka, or a custom gossip mesh is operational, not architectural.
+Naive Redis Pub/Sub: `PUBLISH guild-g {payload}` → Redis dispatches to every subscriber. If every subscriber is a single connection, you're back to O(members). 
+The fix is the same in any system: **gateways subscribe**, not connections. Whether the substrate is Redis, NATS, Kafka, or a custom gossip mesh is operational, not architectural.
 
 ---
 
@@ -156,7 +160,8 @@ A dedicated writer task per connection drains the queue to the socket asynchrono
 
 ### Drop policies (chosen per message type)
 
-- **Presence updates** → coalesce by `(scope, user_id)`: a queued presence event for user 123 is replaced by the newer one. Subscribers care about the *current* state, not the history of transitions. **This single optimization eliminates 80%+ of memory pressure during presence storms.**
+- **Presence updates** → coalesce by `(scope, user_id)`: a queued presence event for user 123 is replaced by the newer one. 
+        Subscribers care about the *current* state, not the history of transitions. **This single optimization eliminates 80%+ of memory pressure during presence storms.**
 - **Typing indicators** → drop oldest unconditionally. Latency-sensitive, easily expired.
 - **Chat messages** → must not drop. If queue full, the connection is *dead* — start the disconnect protocol; client will reconnect and resync from a sequence cursor (§ 8).
 - **Voice signaling** → urgent, never drop, but bounded queue still applies — if overflow, terminate the call gracefully.
@@ -183,17 +188,20 @@ For the cross-host hop, the gateway receives one network message and constructs 
 
 ### 5.2 Object pooling for hot types
 
-Pool the wrapper structs (`Frame`, `Notification`, queue nodes). Sustained allocation rate of these in the steady state is high; making them GC-pressure-free pays off on JVM/CLR/Go runtimes. On Rust/C++ the allocator already handles this well; pooling is usually unnecessary.
+Pool the wrapper structs (`Frame`, `Notification`, queue nodes). Sustained allocation rate of these in the steady state is high; making them GC-pressure-free pays off on JVM/CLR/Go runtimes. 
+On Rust/C++ the allocator already handles this well; pooling is usually unnecessary.
 
 ### 5.3 Off-heap and zero-copy
 
-For the very hottest paths, use `sendfile`-style or io_uring's zero-copy where the socket layer can write the buffer directly without copying through user space. Diminishing returns past the basic "serialize once" — measure first.
+For the very hottest paths, use `sendfile`-style or io_uring's zero-copy where the socket layer can write the buffer directly without copying through user space. 
+Diminishing returns past the basic "serialize once" — measure first.
 
 ---
 
 ## 6. Defeating Lock Contention — Lock-Free / Sharded Subscription Registries
 
-The `scope → connections` map is read on every fan-out (very hot) and written on every subscribe/unsubscribe (much cooler). Naive `RwLock<HashMap>` works until 1 M readers, then the lock cacheline becomes the bottleneck.
+The `scope → connections` map is read on every fan-out (very hot) and written on every subscribe/unsubscribe (much cooler). 
+Naive `RwLock<HashMap>` works until 1 M readers, then the lock cacheline becomes the bottleneck.
 
 ### Three options, ordered by complexity
 

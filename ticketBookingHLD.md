@@ -135,7 +135,7 @@ Payment:
   │  Virtual   │ │  Event /  │ │  Booking     │
   │  Queue     │ │  Catalog  │ │  Service     │
   │  Service   │ │  Service  │ │              │
-  └─────┬──────┘ └──┬────────┘ └───┬──────────┘
+  └─────┬──────┘ └──┬────────┘ └────┬─────────┘
         │           │               │
         │      ┌────▼──────┐  ┌─────▼─────────┐
         │      │ Seat Map  │  │  Reservation  │
@@ -144,8 +144,8 @@ Payment:
         │           │         └─────┬─────────┘
         │           │               │
         │    ┌──────▼───────────────▼──────────────┐
-        │    │          Inventory Service           │
-        │    │  (source of truth for seat status)   │
+        │    │          Inventory Service          │
+        │    │  (source of truth for seat status)  │
         │    └──────────────┬──────────────────────┘
         │                   │
   ┌─────▼───────────────────▼──────────────────────┐
@@ -156,7 +156,6 @@ Payment:
 │Payment │ │Notif.  │ │Ticket │ │ Analytics /  │
 │Service │ │Service │ │Delivery│ │ Fraud Engine│
 └────────┘ └────────┘ └───────┘ └──────────────┘
-
                          │
               ┌──────────▼───────────┐
               │   Database Layer     │
@@ -505,13 +504,13 @@ With a queue:
                      │ (only ~200/sec make it through)
                      ▼
   ┌──────────────────────────────────────────────────────┐
-  │              Booking Service                          │
-  │  (sees manageable, controlled traffic)                │
-  │                                                       │
-  │  Every request must present a valid queue_token       │
-  │  that has status = ADMITTED.                          │
-  │  Requests without valid token → 403 (queue bypass     │
-  │  attempt)                                             │
+  │              Booking Service                         │
+  │  (sees manageable, controlled traffic)               │
+  │                                                      │
+  │  Every request must present a valid queue_token      │
+  │  that has status = ADMITTED.                         │
+  │  Requests without valid token → 403 (queue bypass    │
+  │  attempt)                                            │
   └──────────────────────────────────────────────────────┘
 ```
 
@@ -1410,16 +1409,16 @@ Solution: Per-event isolation (already designed in Section 15).
 ├───────────────────┼──────────────┼────────────────────────────────────────────┤
 │ Queue position    │ STRONG       │ Fairness. Users must be served in order.   │
 │                   │ (within      │ Redis sorted set guarantees ordering.      │
-│                   │  Redis)      │ No "queue jumping" possible.              │
+│                   │  Redis)      │ No "queue jumping" possible.               │
 ├───────────────────┼──────────────┼────────────────────────────────────────────┤
-│ Seat availability │ EVENTUAL     │ Section-level counts can be 1-2 seconds   │
-│ (display counts)  │ (2s stale)   │ stale. Users see "~3200 available" not    │
+│ Seat availability │ EVENTUAL     │ Section-level counts can be 1-2 seconds    │
+│ (display counts)  │ (2s stale)   │ stale. Users see "~3200 available" not     │
 │                   │              │ exact count. Acceptable.                   │
 ├───────────────────┼──────────────┼────────────────────────────────────────────┤
 │ Notifications     │ EVENTUAL     │ Email arriving 30s late is fine.           │
 │                   │ (seconds)    │                                            │
 ├───────────────────┼──────────────┼────────────────────────────────────────────┤
-│ Ticket delivery   │ EVENTUAL     │ Ticket email within 5 minutes of booking  │
+│ Ticket delivery   │ EVENTUAL     │ Ticket email within 5 minutes of booking   │
 │                   │ (minutes)    │ is acceptable. Event is weeks away.        │
 └───────────────────┴──────────────┴────────────────────────────────────────────┘
 ```
@@ -1467,8 +1466,8 @@ Solution: Client-generated idempotency key.
 │  ├─ In queue:        8,234,102  ├─ Total seats:    80,000           │
 │  ├─ Admitted so far:   42,000   ├─ Sold:           31,247   (39%)   │
 │  ├─ Admission rate:    200/sec  ├─ Held:           12,483   (16%)   │
-│  ├─ Est. sellout:      ~8 min   ├─ Available:      36,270   (45%)  │
-│  └─ Bots blocked:      14,291   └─ Blocked:            0          │
+│  ├─ Est. sellout:      ~8 min   ├─ Available:      36,270   (45%)   │
+│  └─ Bots blocked:      14,291   └─ Blocked:            0            │
 │                                                                     │
 │  BOOKINGS                       PAYMENTS                            │
 │  ├─ Attempts/sec:       142     ├─ Auth rate:       142/sec        │
@@ -1478,12 +1477,12 @@ Solution: Client-generated idempotency key.
 │  └─ Conflict rate:      12.3%   └─                  p99: 1.2s     │
 │                                                                     │
 │  INFRASTRUCTURE                  ALERTS                             │
-│  ├─ CDN QPS:        412K/sec    ├─ ✓ All systems nominal           │
-│  ├─ API GW QPS:      12K/sec    ├─ ⚠ Hold expire rate above 4%    │
+│  ├─ CDN QPS:        412K/sec    ├─ ✓ All systems nominal            │
+│  ├─ API GW QPS:      12K/sec    ├─ ⚠ Hold expire rate above 4%     │
 │  ├─ Redis ops/sec:   85K/sec    │   (extending hold timer to 8min) │
 │  ├─ DB writes/sec:    1.8K     └─                                  │
 │  ├─ DB read (replica): 2.1K                                        │
-│  ├─ Kafka lag:          124 msgs                                    │
+│  ├─ Kafka lag:          124 msgs                                   │
 │  └─ Pod count:          booking: 20, queue: 8, inventory: 6        │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘

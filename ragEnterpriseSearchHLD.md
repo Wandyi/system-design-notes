@@ -470,7 +470,9 @@ The LLM dominates. Every other component combined is < 500 ms.
 |---|---|---|---|
 | **Embedding cache** | hash(text) | Re-encoding the same text is wasted cycles | Permanent (text deterministic) |
 | **Retrieval cache** | hash(rewritten_query, filters, acl_signature, model_ver) | Many users ask similar things; many dashboards trigger the same lookups | TTL or on-acl-change |
-| **Rerank cache** | hash(query, chunk_id_set) | Reranker is expensive; result is deterministic | Permanent until model upgrade |
+
+| **Rerank cache** | hash(query, chunk_id_set) | `Reranker is expensive; result is deterministic | Permanent until model upgrade` |
+
 | **Generation cache** | hash(query, retrieved_chunk_ids, model_ver) | Same Q same context → same A | TTL (LLM is non-deterministic w/ temperature; cache for low-temp / official answers only) |
 | **Result cache** (final) | hash(query, user_acl_signature) | End-to-end short-circuit | TTL ~ minutes; bust on doc updates |
 
@@ -488,7 +490,7 @@ Hit rates in production: embedding cache > 99 %, retrieval cache 30–60 %, gene
 | **ACL resolution** | Slow per-query Zanzibar walk | Cache user→group expansion in Redis; bust on group change events; use bitmap intersection |
 | **Reranker latency** | 30 candidates × 50 ms = 1.5 s | Smaller reranker, batched on GPU; ColBERT for very-high QPS; cap candidates at 20 |
 | **LLM TTFT** | First-token 1 s+ on cold | Self-host with vLLM/TensorRT-LLM continuous batching; prefix cache (system prompt + frequent context); speculative decoding |
-| **LLM throughput** | tokens/sec doesn't scale linearly | Tensor + pipeline parallelism; quantization (FP8 / INT4); paged attention |
+| **LLM throughput** | tokens/sec doesn't scale linearly | Tensor + pipeline parallelism; quantization (FP8 / INT4); **paged attention** |
 | **Long tail of slow sources** | One bad PDF blocks ingest | Per-source DLQ; ingest SLA per source; partial freshness OK |
 | **Hot doc** (everyone querying the same RFC) | Replicated chunk read amplification | CDN at chunk-fetch tier; multi-tier cache |
 | **Stale ACL** | User gets revoked, still sees cached results | Acl_signature in cache key; bust cache on revoke event |
@@ -685,4 +687,6 @@ The LLM **dominates** by 1–2 orders of magnitude. The cost-reduction levers in
 11. **Schema choices defended** — `source_etag` for idempotent re-ingest, `acl_signature` for cache busting, separate `embeddings` table for model migrations.
 12. **Anti-patterns named** — the things that look like obvious wins but ship regressions: unbounded context, rerank-100, asymmetric query/passage embeddings, single-tenant vector DB.
 
-The deeper insight: enterprise RAG at MAANG scale isn't an LLM application — it's a **search and retrieval system that happens to use an LLM as the answer formatter**. The 80 % of engineering effort is in the parts that aren't the LLM: ingestion fidelity, ACL correctness, hybrid retrieval, reranking, evaluation, and caching. Get those right and the LLM is the thin top layer; get them wrong and no LLM saves you.
+The deeper insight: enterprise RAG at MAANG scale isn't an LLM application — it's a **search and retrieval system that happens to use an LLM as the answer formatter**. 
+The 80 % of engineering effort is in the parts that aren't the LLM: ingestion fidelity, ACL correctness, hybrid retrieval, reranking, evaluation, and caching. 
+Get those right and the LLM is the thin top layer; get them wrong and no LLM saves you.

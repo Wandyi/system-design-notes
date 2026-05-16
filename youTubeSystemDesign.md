@@ -2,6 +2,7 @@ YouTube Platform — Comprehensive High-Level Design
                                                                                                                                                                                       
 ---                                                                                                                                                                                 
 1. Scale Definition
+```
 
 ┌───────────────────────────────────────────────────────────────────┐                                                                                                                
 │  USERS & ENGAGEMENT                                               │                                                                                                               
@@ -46,7 +47,7 @@ YouTube Platform — Comprehensive High-Level Design
 │  ML model serving:             GPU clusters per region            │
 │  Microservices:                1,000+                             │                                                                                                               
 └───────────────────────────────────────────────────────────────────┘
-                                                                                                                                                                                      
+```                                                                                                                                                                                      
 ---             
 2. Guiding Principles
 

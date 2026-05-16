@@ -17,7 +17,8 @@ DynamoDB rewards *correct schema design upfront* and punishes ad-hoc query evolu
 5. **What does failure look like?** (Provisioned hits ceiling → throttle → cascade. On-demand has cold-start ramp limits. Global Tables conflict resolution is LWW.)
 6. **What's the operational lifecycle?** (Schema evolution. Adding a GSI on a 10TB table takes hours and costs $$$. Backups, restores, migrations.)
 
-The mistake everyone makes: treating DynamoDB like a relational DB with funny syntax. The right model is closer to **a managed, partitioned, log-structured KV store that happens to support some range queries**. Embrace that and the design choices follow.
+The mistake everyone makes: treating DynamoDB like a relational DB with funny syntax. The right model is closer to
+**a managed, partitioned, log-structured KV store that happens to support some range queries**. Embrace that and the design choices follow.
 
 ---
 
@@ -191,7 +192,8 @@ For a global user base reading from their nearest region: enable Global Tables. 
 
 ### 2.8 What I'd actually do
 
-For user profiles at MAANG scale: DynamoDB primary, single-table by user_id, GSIs for the 1-3 most common alt-key queries (email, phone), Streams to Lambda for cache invalidation and OpenSearch indexing for search, Global Tables for multi-region. PITR enabled. DAX for the read-heavy hot tier.
+For user profiles at MAANG scale: DynamoDB primary, single-table by user_id, GSIs for the 1-3 most common alt-key queries (email, phone), 
+Streams to Lambda for cache invalidation and OpenSearch indexing for search, Global Tables for multi-region. PITR enabled. DAX for the read-heavy hot tier.
 
 ---
 
@@ -257,7 +259,7 @@ This pattern (entity by PK, items by SK) is the **item-collection** pattern. Use
 TTL attribute: expires_at (epoch seconds)
 ```
 
-DynamoDB checks every ~48 hours; expired items auto-deleted (no read/write cost). Effectively free garbage collection.
+DynamoDB checks every ~48 hours; expired items auto-deleted (no read/write cost). Effectively **free garbage collection**.
 
 ```python
 # Set TTL on cart update
@@ -385,7 +387,7 @@ Cons:
 - Different entities have wildly different access patterns / capacities.
 - Team unfamiliar with the pattern; documentation overhead high.
 
-For independent entities (a user table, an audit log, a product catalog) — multi-table is fine. Single-table shines for **closely-related, frequently-co-accessed entities**.
+For independent entities (a _user table, an audit log, a product catalog_) — multi-table is fine. Single-table shines for **closely-related, frequently-co-accessed entities**.
 
 ### 4.7 The schema design discipline
 
@@ -395,7 +397,7 @@ Single-table demands:
 3. **Type tag every item** (`type` attribute).
 4. **Document the schema** rigorously — table definition is 90% of the project knowledge.
 
-If someone asks "can we add a query for X?", the answer is either "yes, here's how to use existing keys/indexes" or "we need a new GSI / table redesign". Either is honest; both require thought.
+If someone asks "can we add a query for X?", the answer is either "yes, here's how to use existing keys/indexes" or "we need a new GSI / table re-design". Either is honest; both require thought.
 
 ### 4.8 Trade-offs and alternatives
 
@@ -409,7 +411,8 @@ If someone asks "can we add a query for X?", the answer is either "yes, here's h
 
 ### 4.9 What I'd actually do
 
-For a product with well-known, related domain entities and high read scale: **single-table design**. Spend days upfront on access-pattern enumeration. Build Terraform module that defines the schema, GSIs, and a documented item taxonomy. The discipline pays back over years.
+For a product with well-known, related domain entities and high read scale: **single-table design**. Spend days upfront on access-pattern enumeration. 
+Build Terraform module that defines the schema, GSIs, and a documented item taxonomy. The discipline pays back over years.
 
 For a CRUD app with shifting requirements: **multi-table or RDBMS**. Single-table's rigidity hurts more than it helps.
 
@@ -580,7 +583,8 @@ Common production pattern: **Redis for live leaderboard, DynamoDB for durable sc
 
 ### 6.7 What I'd actually do
 
-For real-time live leaderboards: **Redis ZSET** (ElastiCache) backed by **DynamoDB** for durability. Score writes go to both (or DDB → Streams → Lambda → Redis sync). Top-K and exact rank from Redis. Recovery from DDB.
+For real-time live leaderboards: **Redis ZSET** (ElastiCache) backed by **DynamoDB** for durability. Score writes go to both (or DDB → Streams → Lambda → Redis sync). 
+Top-K and exact rank from Redis. Recovery from DDB.
 
 ---
 
