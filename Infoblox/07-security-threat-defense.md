@@ -67,7 +67,8 @@ From a data-engineering standpoint, TIDE is a curated, deduplicated, expiring, m
 
 The signature feature: detect malicious infrastructure before any human classifies it.
 
-Concept: an attacker registers a domain, sets up infrastructure, then launches a phishing campaign minutes-to-hours later. Static blocklists update too slowly. Infoblox watches:
+Concept: an attacker registers a domain, sets up infrastructure, then launches a phishing campaign minutes-to-hours later. Static blocklists update too slowly. 
+Infoblox watches:
 
 - Newly observed domains (never seen in any DNS query before).
 - Domain registration events (via partnerships with registries).
@@ -178,7 +179,8 @@ A DNS-security product sees every query a user makes — including healthcare lo
 - SOC 2, FedRAMP, ISO 27001 controls.
 - Audit log of every administrative action.
 
-If asked: "How would you design this so a customer can prove to their auditor that their queries aren't visible to other tenants?" — talk encryption-at-rest with tenant-specific KMS keys, row-level security in the analytics store, network segmentation in the processing tier, signed audit logs.
+If asked: "How would you design this so a customer can prove to their auditor that their queries aren't visible to other tenants?" — 
+talk encryption-at-rest with tenant-specific KMS keys, row-level security in the analytics store, network segmentation in the processing tier, signed audit logs.
 
 ## 7.12 Worked design problem — newly-registered-domain detector
 

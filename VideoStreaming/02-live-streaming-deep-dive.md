@@ -1,6 +1,7 @@
 # 2 · Live Streaming — The JioHotstar 72.5M Concurrent Story
 
-This file is the headline interview topic: how do you stream one live event to tens of millions of concurrent viewers? JioHotstar's 72.5M peak during the India vs New Zealand T20 World Cup 2026 final is the most concrete case study in the world right now. Walk through it end-to-end and you've covered most of what a staff interviewer wants to hear.
+This file is the headline interview topic: how do you stream one live event to tens of millions of concurrent viewers? 
+JioHotstar's 72.5M peak during the India vs New Zealand T20 World Cup 2026 final is the most concrete case study in the world right now. Walk through it end-to-end and you've covered most of what a staff interviewer wants to hear.
 
 ## 2.1 The shape of the problem
 
@@ -8,7 +9,8 @@ A cricket final is *not* a hard scaling problem in absolute throughput — it's 
 
 - **Predictable peak time** — toss is at a known minute; the next 3.5 hours of load are known to within ±15%.
 - **Synchronous behavior** — viewers join within a 5-minute window around toss; they leave within a 5-minute window after the final wicket.
-- **Single content surface** — one stream (well, a few: English, Hindi, regional, low-data) gets effectively *all* the traffic. Cache hit ratios for the live stream itself approach 100%; cache helps less than you'd hope because the content is constantly being created.
+- **Single content surface** — one stream (well, a few: English, Hindi, regional, low-data) gets effectively *all* the traffic. 
+  - Cache hit ratios for the live stream itself approach 100%; cache helps less than you'd hope because the content is constantly being created.
 - **High emotional cost of failure** — buffering during the last over is a national incident.
 
 The architecture is sized for this shape, not for steady-state.
@@ -83,7 +85,8 @@ JioHotstar publishes a "low data mode" specifically for cricket — audio-only c
 
 Engineering choices on the transcoder farm:
 
-- **GPU vs. ASIC vs. CPU** — encoding is expensive. GPU (NVIDIA NVENC) is fast but lower quality per bit; ASICs (AWS Elemental, Google Argos) are great per bit at scale; CPU (libx264, x265, SVT-AV1) gives best quality but is slowest.
+- **GPU vs. ASIC vs. CPU** — encoding is expensive. GPU (NVIDIA NVENC) is fast but lower quality per bit; ASICs (AWS Elemental, Google Argos) are great per bit at scale; 
+- CPU (libx264, x265, SVT-AV1) gives best quality but is slowest.
 - **Per-segment parallelism** — encoding is parallelized across many segments simultaneously to keep up with real time.
 - **Encoder redundancy** — N+1 active-active encoders per rendition; if one fails the next produces the segment.
 - **GOP alignment across renditions** — IDR frames must align across all bitrate variants for clean ABR switching. Force GOP length (e.g., 2-second GOP) and align segment boundaries to GOP boundaries.
@@ -138,7 +141,8 @@ If Netflix's Open Connect put caches *into ISPs*, JioHotstar's parent company *i
 Behind every CDN there's an **origin** that holds the canonical copy. Two-tier setup:
 
 - **Edge CDN** — closest to user. ~1000 PoPs total across all vendors. Most reads served here.
-- **Origin shield** — mid-tier caches that sit between edges and the actual origin. Their job is to *deduplicate origin requests*. Without an origin shield, 100 edge PoPs might all request the same hot segment from the origin, leading to a stampede.
+- **Origin shield** — mid-tier caches that sit between edges and the actual origin. Their job is to *deduplicate origin requests*. 
+- Without an origin shield, 100 edge PoPs might all request the same hot segment from the origin, leading to a stampede.
 - **Origin** — usually object storage (S3 + custom front-end) + manifest service. Sized for ~1% of peak edge traffic.
 
 For live, **only the manifest and the most-recent segment** are hot at the origin. Older segments are cold (in DVR scenarios) or evicted.
@@ -177,7 +181,8 @@ The *ordering* matters more than any single mitigation. Have the runbook before 
 
 You can't fix what you can't see. JioHotstar (and similar) instrument with:
 
-- **Player-side QoE beacons** — every client reports start time (TTFV), buffering events, ABR switches, throughput estimate, errors. Sampled to 1–5% during normal load, 0.1% at peak to avoid the beacons themselves becoming the problem.
+- **Player-side QoE beacons** — every client reports start time (TTFV), buffering events, ABR switches, throughput estimate, errors. 
+- Sampled to 1–5% during normal load, 0.1% at peak to avoid the beacons themselves becoming the problem.
 - **Server-side metrics** — per-CDN per-region origin requests, edge hit ratio, manifest age, encoder bitrate, packager queue depth.
 - **Synthetic probes** — emulated player sessions from many vantage points to detect issues even when real-user telemetry is sampled away.
 - **Real-time dashboards** — sub-second-refreshing displays in the NOC during the match.

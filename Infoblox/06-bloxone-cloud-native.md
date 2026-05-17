@@ -1,6 +1,8 @@
 # 6 · BloxOne / Universal DDI — Cloud-Native Architecture
 
-BloxOne (now branded as **Universal DDI** with **NIOS-X** as the on-prem footprint) is Infoblox's cloud-native rewrite of the DDI stack. The pitch: same DDI capabilities, but managed from SaaS, on Kubernetes, with microservices, and operable from anywhere. Most new engineering happens here, so most staff-engineer interview signal will be on this architecture.
+BloxOne (now branded as **Universal DDI** with **NIOS-X** as the on-prem footprint) is Infoblox's cloud-native rewrite of the DDI stack. 
+The pitch: same DDI capabilities, but managed from SaaS, on Kubernetes, with microservices, and operable from anywhere. 
+Most new engineering happens here, so most staff-engineer interview signal will be on this architecture.
 
 ## 6.1 The architectural shift
 
@@ -118,14 +120,15 @@ A typical custom Infoblox plugin would inject policy from the cloud control plan
 
 ## 6.6 Kea hook libraries
 
-Kea is similarly plugin-driven. Hooks are dynamically-loaded shared libraries that fire at protocol stages: `pkt4_receive`, `lease4_select`, `lease4_renew`, etc. Infoblox writes hooks to:
+Kea is similarly plugin-driven. Hooks are dynamically-loaded shared libraries that fire at protocol stages: `pkt4_receive`, `lease4_select`, `lease4_renew`, etc. 
+Infoblox writes hooks to:
 
 - Authenticate the lease request against IPAM policy.
 - Emit telemetry events to the cloud.
 - Enforce option assignment per-tenant.
 - Integrate DHCP-DNS updates.
 
-The Kea **HA hook** (built-in) does the hot-standby / load-balancing logic. Kea **lease backends** (memfile, MySQL/Postgres, Cassandra) can swap based on customer scale.
+The Kea **HA hook** (built-in) does the hot-standby / load-balancing logic. Kea **lease backends** (memfile, MySQL/Postgres, Cassandra) can swap based on customerscale.
 
 ## 6.7 Multi-tenancy
 

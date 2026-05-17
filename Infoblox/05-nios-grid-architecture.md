@@ -1,6 +1,7 @@
 # 5 · NIOS Grid — Architecture Deep Dive
 
-The Grid is Infoblox's on-prem clustering architecture and the source of much of their competitive moat. It predates Kubernetes by a decade and solves a similar problem — operating dozens to thousands of appliances as a coherent system. Expect at least one question about how the Grid handles failure, replication, or scale.
+The Grid is Infoblox's on-prem clustering architecture and the source of much of their competitive moat. It predates Kubernetes by a decade and solves a similar problem — operating dozens to thousands of appliances as a coherent system. 
+Expect at least one question about how the Grid handles failure, replication, or scale.
 
 ## 5.1 What the Grid is, in one line
 
@@ -29,7 +30,8 @@ All Grid-internal traffic — replication, configuration push, software upgrades
 
 ## 5.4 BloxSYNC — the replication protocol
 
-BloxSYNC is Infoblox's proprietary replication mechanism. It's the closest thing the Grid has to a "raft" or "paxos" — though it's not a consensus protocol; it's a **master-replica streaming** scheme.
+BloxSYNC is Infoblox's proprietary replication mechanism. It's the closest thing the Grid has to a "raft" or "paxos" — though it's not a consensus protocol; 
+it's a **master-replica streaming** scheme.
 
 What you can infer publicly:
 - The Grid Master is the writer; members are readers/followers for their slice.
@@ -39,7 +41,8 @@ What you can infer publicly:
 
 **Failure model**: if a member is offline, it queues catch-up; once back, the GM streams the missed delta. If a member is offline too long, it may need a full re-sync (similar to how AXFR backstops IXFR).
 
-**Why not auto-failover the Grid Master?** Split-brain is the killer scenario — two GMs writing divergent configuration to different members. Infoblox's design choice is operator-driven promotion with verification. Newer NIOS versions add "**enhanced GM-Candidate**" where the candidate is closer to hot-standby, but promotion is still operator-blessed.
+**Why not auto-failover the Grid Master?** Split-brain is the killer scenario — two GMs writing divergent configuration to different members. 
+Infoblox's design choice is operator-driven promotion with verification. Newer NIOS versions add "**enhanced GM-Candidate**" where the candidate is closer to hot-standby, but promotion is still operator-blessed.
 
 ## 5.5 How services run on the Grid
 
@@ -94,7 +97,8 @@ A large enterprise might have:
 - **Members** in each remote site.
 - **HA pairs** in critical sites.
 
-DNS query routing: clients in a region resolve against the local member (configured via DHCP option 6). If that member fails, clients fall back to the HA partner or to a distant member. **Anycast** is sometimes used to make this transparent — multiple members advertise the same service IP and BGP/OSPF routes the client to the nearest live one.
+DNS query routing: clients in a region resolve against the local member (configured via DHCP option 6). If that member fails, clients fall back to the HA partner or to a distant member. 
+**Anycast** is sometimes used to make this transparent — multiple members advertise the same service IP and BGP/OSPF routes the client to the nearest live one.
 
 ## 5.10 Operations: monitoring and forensics
 
@@ -105,7 +109,8 @@ Critical metrics the operator watches:
 - Grid VPN tunnel up/down.
 - Disk / DB-journal headroom on GM.
 
-Common incident type: "the GM was offline for 4 hours due to maintenance, and now members are out of sync." Investigation: check replication catch-up state, possibly trigger re-sync, watch for capacity blowup on the GM.
+Common incident type: "the GM was offline for 4 hours due to maintenance, and now members are out of sync." Investigation: check replication catch-up state, 
+possibly trigger re-sync, watch for capacity blowup on the GM.
 
 ## 5.11 Failure-mode catalog (interview gold)
 
