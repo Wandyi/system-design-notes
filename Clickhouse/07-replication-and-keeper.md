@@ -1,6 +1,7 @@
 # 7 · Replication and ClickHouse Keeper
 
-Replication = how ClickHouse keeps multiple replicas of a table consistent and how it survives node failures. Keeper = the metadata coordination service that makes it work. Both are mandatory understanding for staff-level.
+Replication = how ClickHouse keeps multiple replicas of a table consistent and how it survives node failures. 
+Keeper = the metadata coordination service that makes it work. Both are mandatory understanding for staff-level.
 
 ## 7.1 What gets replicated
 
@@ -38,7 +39,8 @@ The macros `{shard}` and `{replica}` are resolved from the server config — eve
 
 ### Insert dedup
 
-Each block inserted into a `ReplicatedMergeTree` is **hashed**, and the hash is stored in Keeper. Subsequent inserts of the same block (hash collision) are rejected as duplicates. This gives at-most-once dedup within a configurable window (`replicated_deduplication_window`, default 100 blocks).
+Each block inserted into a `ReplicatedMergeTree` is **hashed**, and the hash is stored in Keeper. Subsequent inserts of the same block (hash collision) are rejected as duplicates. 
+This gives at-most-once dedup within a configurable window (`replicated_deduplication_window`, default 100 blocks).
 
 Use case: retrying an insert after a network failure won't double-write. Use case: feeding Kafka with at-least-once semantics — duplicates dedup naturally.
 
@@ -56,7 +58,8 @@ Pair with `select_sequential_consistency = 1` on the SELECT side to enforce that
 
 ### Merge / mutation coordination
 
-When a replica decides to merge parts, it writes the assignment to Keeper. Other replicas fetch the new merged part once it's done (or perform the merge themselves if `replicated_max_parallel_fetches_for_table` says they should).
+When a replica decides to merge parts, it writes the assignment to Keeper. Other replicas fetch the new merged part once it's done 
+(or perform the merge themselves if `replicated_max_parallel_fetches_for_table` says they should).
 
 A mutation (`ALTER UPDATE`/`DELETE`) is written to Keeper with a monotonic version. Each replica applies it locally; progress is tracked per replica.
 
@@ -127,7 +130,8 @@ If you need strong consistency:
 When a replica is down for a while and comes back:
 - It reads its position in the Keeper log.
 - For each missed entry, it fetches the part from another replica.
-- If the gap is too large (`max_replicated_logs_to_keep` exceeded), the replica is "lost" and must be re-initialized from scratch (rebuild from another replica). This is a deliberate operational fence — don't let logs grow unbounded.
+- If the gap is too large (`max_replicated_logs_to_keep` exceeded), the replica is "lost" and must be re-initialized from scratch (rebuild from another replica). 
+  This is a deliberate operational fence — don't let logs grow unbounded.
 
 `SYSTEM RESTORE REPLICA <table>` can fast-track a lost replica's recovery.
 

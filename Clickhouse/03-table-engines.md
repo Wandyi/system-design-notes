@@ -1,6 +1,7 @@
 # 3 · Table Engines — The Full Family
 
-A ClickHouse "engine" defines the storage layout, the indexing, the replication behavior, and any merge-time logic. Picking the right one is the most common interview probe — every system-design question is partly "what engine and why?".
+A ClickHouse "engine" defines the storage layout, the indexing, the replication behavior, and any merge-time logic. 
+Picking the right one is the most common interview probe — every system-design question is partly "what engine and why?".
 
 ## 3.1 The MergeTree family
 
@@ -22,7 +23,8 @@ PARTITION BY toYYYYMM(ts);
 
 ### ReplacingMergeTree — deduplicate on merge
 
-Keeps the row with the *highest* version (or the last inserted if no version) for each unique `ORDER BY` key, deleting older versions *when those rows happen to merge*.
+Keeps the row with the *highest* version (or the last inserted if no version) for each unique `ORDER BY` key, 
+deleting older versions *when those rows happen to merge*.
 
 ```sql
 CREATE TABLE users (
@@ -63,7 +65,8 @@ INSERT INTO user_state VALUES (1, 'active', -1);  -- cancel old
 INSERT INTO user_state VALUES (1, 'inactive', 1); -- add new
 ```
 
-**Caveat**: order of inserts matters; if -1 lands without a matching +1, you get a negative-state row. Operationally fragile. Use `VersionedCollapsingMergeTree` if you can attach versions.
+**Caveat**: order of inserts matters; if -1 lands without a matching +1, you get a negative-state row. Operationally fragile. 
+Use `VersionedCollapsingMergeTree` if you can attach versions.
 
 ### VersionedCollapsingMergeTree
 
@@ -93,7 +96,8 @@ After merge, multiple inserts with the same `(hour, page)` become one row with s
 
 ### AggregatingMergeTree — the workhorse for materialized views
 
-Stores **intermediate aggregation states** (binary blobs produced by `*State` functions). At merge time, states for the same key are **combined** via the aggregate's combine function.
+Stores **intermediate aggregation states** (binary blobs produced by `*State` functions). 
+At merge time, states for the same key are **combined** via the aggregate's combine function.
 
 ```sql
 CREATE TABLE rev_by_day (
@@ -115,7 +119,8 @@ FROM rev_by_day
 GROUP BY day, country;
 ```
 
-**When to use**: pre-aggregating from raw events via a materialized view. The canonical real-time-analytics acceleration pattern. See [06](06-indexes-projections-and-mvs.md).
+**When to use**: pre-aggregating from raw events via a materialized view. The canonical real-time-analytics acceleration pattern. 
+See [06](06-indexes-projections-and-mvs.md).
 
 ### GraphiteMergeTree
 
@@ -123,13 +128,15 @@ Specialized for Graphite time-series. Rolls up old data into coarser intervals a
 
 ## 3.2 Replicated variants
 
-Every MergeTree variant has a `Replicated*` twin (e.g., `ReplicatedMergeTree`, `ReplicatedAggregatingMergeTree`). They use ClickHouse Keeper for coordination — see [07](07-replication-and-keeper.md).
+Every MergeTree variant has a `Replicated*` twin (e.g., `ReplicatedMergeTree`, `ReplicatedAggregatingMergeTree`). 
+They use ClickHouse Keeper for coordination — see [07](07-replication-and-keeper.md).
 
 Required for any production cluster.
 
 ## 3.3 SharedMergeTree (Cloud-only)
 
-Cloud's leaderless variant for shared S3 storage. Same surface as MergeTree but the data layer is S3 and metadata is Keeper. Replicas share the data; scaling is free of replication. See [09](09-cloud-and-sharedmergetree.md).
+Cloud's leaderless variant for shared S3 storage. Same surface as MergeTree but the data layer is S3 and metadata is Keeper. 
+Replicas share the data; scaling is free of replication. See [09](09-cloud-and-sharedmergetree.md).
 
 In ClickHouse Cloud, when you write `MergeTree` it's silently mapped to `SharedMergeTree`.
 
@@ -152,7 +159,8 @@ All Log-family tables lack: replication, mutations, parallel reads, primary inde
 
 ## 3.6 Buffer engine
 
-A RAM staging table that flushes to a backing table on size/age thresholds. Used to absorb small-insert workloads before async-insert existed. Today mostly replaced by `async_insert = 1`.
+A RAM staging table that flushes to a backing table on size/age thresholds. 
+Used to absorb small-insert workloads before async-insert existed. Today mostly replaced by `async_insert = 1`.
 
 ```sql
 CREATE TABLE events_buffer AS events
@@ -239,7 +247,8 @@ A dictionary is the right answer for **small-to-medium reference data** that you
 
 ## 3.10 MaterializedView engine
 
-The MV itself is a table (with an engine — `TO target` form is preferred). The MV-as-a-pseudo-engine is mostly an implementation detail; you almost always use the `TO target_table` form so the MV writes to a normal MergeTree.
+The MV itself is a table (with an engine — `TO target` form is preferred). The MV-as-a-pseudo-engine is mostly an implementation detail; 
+you almost always use the `TO target_table` form so the MV writes to a normal MergeTree.
 
 ## 3.11 RefreshableMaterializedView
 

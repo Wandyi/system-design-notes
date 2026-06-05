@@ -84,7 +84,8 @@ Classic ClickHouse mutations rewrite whole data parts (expensive). SharedMergeTr
 DELETE FROM events WHERE user_id = 42;
 ```
 
-Marks rows with a hidden `_row_exists = 0`. Queries automatically filter them out. Background cleanup eventually rewrites parts to physically drop the rows.
+Marks rows with a hidden `_row_exists = 0`. 
+Queries automatically filter them out. Background cleanup eventually rewrites parts to physically drop the rows.
 
 ### Lightweight UPDATE (Cloud-first)
 
@@ -125,7 +126,8 @@ PARTITION BY toYYYYMM(ts)
 TTL ts + INTERVAL 30 DAY TO VOLUME 'cold';
 ```
 
-Old data automatically moves to S3 (cheaper) while hot data stays local (faster). Cloud abstracts this — everything's effectively on S3 with a hot file cache.
+Old data automatically moves to S3 (cheaper) while hot data stays local (faster). 
+Cloud abstracts this — everything's effectively on S3 with a hot file cache.
 
 ## 9.6 Multi-tenancy patterns inside one Cloud service
 
@@ -183,7 +185,8 @@ A staff answer weighs:
 - **DR** — bare metal needs explicit backups / cross-DC; Cloud gives you S3 cross-region.
 - **Compliance / data residency** — both can be satisfied; Cloud has region selection.
 
-Common answer: stay on bare metal for steady high-utilization production; use Cloud for dev/test, bursty workloads, and new customer-facing analytics products where you want to spin up services per-customer.
+Common answer: stay on bare metal for steady high-utilization production; use Cloud for dev/test, bursty workloads, and new customer-facing 
+analytics products where you want to spin up services per-customer.
 
 ## 9.11 Must-internalize
 

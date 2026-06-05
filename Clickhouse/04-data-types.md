@@ -111,7 +111,8 @@ attrs   Map(LowCardinality(String), String)
 
 **Tuple**: positional, fixed schema; cheap. Use for paired values.
 
-**Map**: variable schema, more expensive. Each row has its own keys. Useful for event metadata that varies per row. Stored internally as two arrays (`Map.keys`, `Map.values`) so you can use array functions on it.
+**Map**: variable schema, more expensive. Each row has its own keys. Useful for event metadata that varies per row. 
+Stored internally as two arrays (`Map.keys`, `Map.values`) so you can use array functions on it.
 
 ## 4.10 Nested
 
@@ -157,7 +158,8 @@ Variant with unbounded types — store anything; ClickHouse tracks which types a
 data JSON
 ```
 
-Parses JSON into a columnar form where each path becomes a subcolumn with inferred type. Subcolumns can be used in ORDER BY, in skip indexes, and benefit from columnar storage / compression.
+Parses JSON into a columnar form where each path becomes a subcolumn with inferred type. Subcolumns can be used in ORDER BY, in skip indexes, and 
+benefit from columnar storage / compression.
 
 You can hint known paths to keep them efficient:
 ```sql

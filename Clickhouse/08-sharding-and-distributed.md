@@ -50,7 +50,8 @@ Clients write to and read from `events` (the Distributed). It handles routing tr
 </remote_servers>
 ```
 
-`internal_replication=true` means the Distributed engine will write to **one** replica per shard and let `ReplicatedMergeTree` handle the rest. With `false`, the Distributed writes to *every* replica directly — bypasses ReplicatedMergeTree's coordination. Default modern setup is `true`.
+`internal_replication=true` means the Distributed engine will write to **one** replica per shard and let `ReplicatedMergeTree` handle the rest. With `false`, 
+the Distributed writes to *every* replica directly — bypasses ReplicatedMergeTree's coordination. Default modern setup is `true`.
 
 ## 8.3 Sharding key — pick wisely
 
@@ -74,7 +75,7 @@ If your sharding key clusters a hot entity onto one shard, you get a hot shard. 
 
 ### Insert path
 
-- **Client-side sharding** — client computes the shard and writes directly to one shard's local table. Best performance; no Distributed-engine fan-out cost. Used in production by mature teams.
+- **Client-side sharding** — client computes the shard and _writes directly to one shard's local table_. Best performance; no Distributed-engine fan-out cost. Used in production by mature teams.
 - **Server-side sharding via Distributed** — convenient; the Distributed table accepts the row, hashes the sharding key, and routes. Cost: an extra hop per row.
 
 For high-throughput streaming ingest (Kafka, OTel), client-side is materially faster.

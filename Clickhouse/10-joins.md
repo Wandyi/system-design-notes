@@ -4,7 +4,8 @@ Joins are the most misunderstood part of ClickHouse for newcomers. ClickHouse ha
 
 ## 10.1 Mental model: when to JOIN at all
 
-ClickHouse is happiest when the analytical fact lives in **one wide table** and any small dimensions are in **dictionaries**. The first thing to ask in an interview: *do you actually need this JOIN?*
+ClickHouse is happiest when the analytical fact lives in **one wide table** and any small dimensions are in **dictionaries**. 
+The first thing to ask in an interview: *do you actually need this JOIN?*
 
 | Alternative | Use when |
 |-------------|----------|
@@ -120,7 +121,7 @@ SELECT * FROM a JOIN b ON a.id = b.id;
 
 `SELECT ... JOIN ANY` returns at most one match per left row (the equivalent of "any of the matches").
 
-`ASOF JOIN` joins on the closest match in a sorted sequence — useful for time-series enrichment.
+`ASOF JOIN` joins on the closest match in a sorted sequence — useful for **time-series enrichment.**
 
 ### LEFT / RIGHT / INNER / FULL / CROSS
 
@@ -160,7 +161,7 @@ The subquery runs once on the initiator, the result is sent to every shard, then
 
 **Anti-pattern**: a plain JOIN on a Distributed right side without GLOBAL — each shard re-runs the right query in full. N× the work.
 
-## 10.11 Dictionary as the join replacement
+## 10.11 Dictionary as the join replacement--> **IMPORTANT**
 
 The fastest analytical lookup is `dictGet` against an in-memory dictionary.
 
