@@ -1,6 +1,7 @@
 # Scaling Stateful Systems at MAANG Scale — Staff-Level Insights
 
-> A deep, opinionated reference for designing, evolving, and operating *stateful* services that serve **1B+ users/day** or **>10M RPS** sustained, with petabyte working sets, multi-region presence, and tight (p99 ≤ 10–50 ms) SLOs. This is the operational-and-architectural knowledge that separates senior engineers (who scale things 10x) from staff engineers (who can take a system 1000x and survive the migrations, regressions, and 3 AM pages along the way).
+> A deep, opinionated reference for designing, evolving, and operating *stateful* services that serve **1B+ users/day** or **>10M RPS** sustained, with petabyte working sets, multi-region presence, and tight (p99 ≤ 10–50 ms) SLOs. 
+> This is the operational-and-architectural knowledge that separates senior engineers (who scale things 10x) from staff engineers (who can take a system 1000x and survive the migrations, regressions, and 3 AM pages along the way).
 
 ---
 
@@ -52,13 +53,15 @@ You cannot manage 100+ PB/yr growth with single-cluster designs. **Tiered storag
 
 ### 1.3 Latency math
 
-A **fan-out read** of 30 backend calls, each with p99 = 20 ms, has overall p99 ≈ **80–120 ms** (you don't add p99s, you compose the *probability of any one being slow* via tail-amplification — see §13). At MAANG scale, fan-out is the dominant source of latency, not single-shard work.
+A **fan-out read** of 30 backend calls, each with p99 = 20 ms, has overall p99 ≈ **80–120 ms** (you don't add p99s, you compose the *probability of any one being slow* via tail-amplification — see §13). 
+At MAANG scale, fan-out is the dominant source of latency, not single-shard work.
 
 ### 1.4 Failure budget
 
 99.99% availability = **52 min/year** of total downtime allowed.
 
-If your stateful tier has **10 dependencies** that are each 99.99%, your effective max is 99.9% (~8.7 hr/yr), assuming serial dependence. This is the **"ALL"-availability arithmetic**: stateful systems must be more reliable than the weakest dependent link, *or* you must architect around failures (hedging, fallbacks, partial degradation).
+If your stateful tier has **10 dependencies** that are each 99.99%, your effective max is 99.9% (~8.7 hr/yr), assuming serial dependence. 
+This is the **"ALL"-availability arithmetic**: stateful systems must be more reliable than the weakest dependent link, *or* you must architect around failures (hedging, fallbacks, partial degradation).
 
 ---
 
@@ -78,14 +81,15 @@ It is a defining staff-level insight that **scaling stateful systems is not "sca
 | **Tests** | Stateless = idempotent. Easy to test. | Stateful = tests interact with prior state; harder to repro. |
 | **Migrations** | Replace binary, done. | Schema migrations, dual-writes, backfills, cutover. Months. |
 
-**The state-locality principle**: at MAANG scale, every architectural choice is forced by *where the state lives* and *who owns it at any moment*. Stateless layers exist primarily to *route* and *transform*; the stateful core is the bottleneck and the only thing whose failure is unrecoverable in seconds.
+**The state-locality principle**: at MAANG scale, every architectural choice is forced by *where the state lives* and *who owns it at any moment*. 
+    Stateless layers exist primarily to *route* and *transform*; the stateful core is the bottleneck and the only thing whose failure is unrecoverable in seconds.
 
 ### 2.1 The Three Pillars of Stateful Design
 
 ```
                     ┌───────────────────────┐
-                    │  STATEFUL SYSTEM       │
-                    │  (1B users / 10M RPS)  │
+                    │  STATEFUL SYSTEM      │
+                    │  (1B users / 10M RPS) │
                     └───────────┬───────────┘
                                 │
         ┌───────────────────────┼───────────────────────┐
@@ -150,7 +154,7 @@ A staff engineer is fluent in *all three* and the trade-offs between them.
 - Removing/dead node: its 128 slices distribute back to existing nodes.
 
 **Failure modes still happen** at this level:
-- **Skew**: bad random seed → vnode positions cluster → some nodes own 2× their share. Mitigation: rendezvous hashing or careful position seeding.
+- **Skew**: bad random seed → vnode positions cluster → some nodes own 2× their share. Mitigation: **rendezvous hashing** or careful position seeding.
 - **Hot vnode**: a single hot key (celebrity user) sits in one vnode → that vnode is overloaded. Vnodes don't help if the *key itself* is hot.
 - **Replication interaction**: if RF=3, the 3 replicas are the *next 3 vnodes* on the ring, and these may all live on the same physical node if vnode placement isn't rack-aware. **Always use rack/zone awareness in placement.**
 
@@ -197,7 +201,8 @@ A single hot key in a single shard can:
 
 ### 3.5 The directory shard — when to leave consistent hashing behind
 
-When tenants or hot keys vary 1000:1 in size or load, consistent hashing collapses (you cannot move a single hot vnode to a different physical node easily). At that point, consider **directory-based sharding** (used by Slack, Figma, Notion, Vitess, FB Messenger):
+When tenants or hot keys vary 1000:1 in size or load, consistent hashing collapses (you cannot move a single hot vnode to a different physical node easily). 
+At that point, consider **directory-based sharding** (used by Slack, Figma, Notion, Vitess, FB Messenger):
 
 ```
             ┌─────────────────────┐
@@ -216,7 +221,8 @@ When tenants or hot keys vary 1000:1 in size or load, consistent hashing collaps
 - Pro: full freedom to move/split/merge tenants. You can place "Disney+" alone on dedicated shards while small tenants share a shard.
 - Con: directory itself becomes a critical-path lookup (must be highly available, very cached, very fast). Stale directory → wrong shard → drop or proxy → latency hit.
 
-**Staff insight**: directory sharding is a more powerful, but operationally heavier model. Use it for **multi-tenant SaaS** where tenant skew is huge; avoid it for **uniform user-keyed** workloads where consistent hashing + vnodes wins.
+**Staff insight**: directory sharding is a more powerful, but operationally heavier model. 
+Use it for **multi-tenant SaaS** where tenant skew is huge; avoid it for **uniform user-keyed** workloads where consistent hashing + vnodes wins.
 
 ### 3.6 Online resharding — the operation that ends careers
 
@@ -383,7 +389,9 @@ EVENTUAL CONSISTENCY
       DynamoDB default, Cassandra LOCAL_ONE.
 ```
 
-**Staff insight**: most product features need only **causal** + **read-your-writes** consistency, not linearizability. Engineers who reach for Spanner-grade strong consistency by default are over-paying by 10–100× in latency and infra cost. The skill is matching consistency to the **business invariant being protected**, not to the engineer's anxiety level.
+**Staff insight**: most product features need only **causal** + **read-your-writes** consistency, not linearizability. 
+Engineers who reach for Spanner-grade strong consistency by default are over-paying by 10–100× in latency and infra cost. 
+The skill is matching consistency to the **business invariant being protected**, not to the engineer's anxiety level.
 
 ### 4.5 Replication lag — the silent killer
 
@@ -400,7 +408,8 @@ Mitigations:
 - **Saturation alarms** at lag > 10s
 - **Read fencing**: refuse reads from replicas that lag > N seconds (and serve from primary or fail open with tagged stale data)
 
-The **read-your-own-writes** problem in async setups: a user posts a comment, then refreshes — their own comment is missing because the read hit a lagging replica. Mitigations: pin to primary for `replica_lag_seconds` after a write, or use `LSN` (log sequence number) tracking — the client sends the LSN it wrote, and the read waits for the replica to reach that LSN.
+The **read-your-own-writes** problem in async setups: a user posts a comment, then refreshes — their own comment is missing because the read hit a lagging replica. 
+Mitigations: pin to primary for `replica_lag_seconds` after a write, or use `LSN` (log sequence number) tracking — the client sends the LSN it wrote, and the read waits for the replica to reach that LSN.
 
 ### 4.6 Geo-replication and the speed of light
 
@@ -415,7 +424,8 @@ You cannot beat physics with engineering.
 Strategies:
 
 - **Async geo-replication** (default for most products): writes commit locally; replicate to other regions in background. Cross-region read sees stale or missing.
-- **Quorum-spanning** (Spanner approach): every write requires a Paxos round across geo-distributed replicas. Strong consistency, **but** every write pays geo-RTT. Spanner mitigates with Paxos groups per shard, TrueTime, and selective placement.
+  - **Quorum-spanning** (Spanner approach): every write requires a Paxos round across geo-distributed replicas. Strong consistency, **but** every write pays geo-RTT. 
+    Spanner mitigates with Paxos groups per shard, TrueTime, and selective placement.
 - **Tunable per-row**: Cassandra/DynamoDB Global Tables: write to local region, asynchronously replicate; conflict resolution = LWW.
 - **Region-pinned tenants**: each user's data lives in *one* region; cross-region access is rare and explicit.
 - **Active-active with conflict resolution**: writes in any region accepted; conflicts merged (LWW, CRDT, app-specific).
@@ -460,7 +470,8 @@ When two regions both accept writes for the same key:
   - Read latency p99 spikes (CPU contention, I/O queuing)
   - Disk space spikes (old + new SSTs coexist) → can OOM disk
   - Cache pollution → reads miss for minutes after
-- **B-tree bloat & vacuum**: at the analogous Postgres level, MVCC dead tuples accumulate, autovacuum lags, table bloat hits 2–10× live data, query planner gets confused. Aggressive autovacuum tuning is a full-time concern.
+- **B-tree bloat & vacuum**: at the analogous Postgres level, MVCC dead tuples accumulate, autovacuum lags, table bloat hits 2–10× live data, query planner gets confused. 
+- Aggressive autovacuum tuning is a full-time concern.
 
 ### 5.2 Memtable / WAL / SSTable architecture (LSM in detail)
 

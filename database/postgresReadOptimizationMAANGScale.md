@@ -281,16 +281,18 @@ These are the failure modes you will hit at MAANG scale — design for them up f
 
 **Handling**:
 - **Throttle bulk writes**: batch size limits, `COMMIT` every N rows, use `pg_backend_backoff_ms` or application-level pacing.
-- **Parallel WAL apply** (PG 16+ limited support, Aurora has this natively; AlloyDB too).
-      - Parallel WAL apply is a PostgreSQL feature (since v14/15+) that accelerates logical replication by using multiple background workers to apply large, in-progress transactions simultaneously on a subscriber. It significantly reduces replication lag by allowing parallel application of changes. By setting streaming = parallel and configuring max_parallel_apply_workers, the subscriber reduces the bottleneck of applying large transactions in a single thread, enhancing performance.
+  - **Parallel WAL apply** (PG 16+ limited support, Aurora has this natively; AlloyDB too).
+        - Parallel WAL apply is a PostgreSQL feature (since v14/15+) that accelerates logical replication by using multiple background workers to apply large, 
+           in-progress transactions simultaneously on a subscriber. It significantly reduces replication lag by allowing parallel application of changes. 
+           By setting streaming = parallel and configuring max_parallel_apply_workers, the subscriber reduces the bottleneck of applying large transactions in a single thread, enhancing performance.
     
-        **Key Aspects of Parallel Apply:**
-        Logical Replication Speed: It is designed to handle large transactions by not waiting for the final COMMIT message from the publisher to start applying changes.
-        Worker Configuration: It is controlled via max_parallel_apply_workers_per_subscription and utilizes max_logical_replication_workers.
-        Data Consistency: Although multiple workers apply changes, the order of WAL records for a given transaction or data block is maintained to ensure consistency.
-        Limitations: It applies to logical replication, not inherently to crash recovery on physical standby servers, which usually runs single-threaded.
-        Implementation:
-        To activate this, you must configure the subscription on the subscriber side to handle streaming in parallel, allowing for multiple workers to pick up and apply the incoming logical changes to the database
+          **Key Aspects of Parallel Apply:**
+          Logical Replication Speed: It is designed to handle large transactions by not waiting for the final COMMIT message from the publisher to start applying changes.
+          Worker Configuration: It is controlled via max_parallel_apply_workers_per_subscription and utilizes max_logical_replication_workers.
+          Data Consistency: Although multiple workers apply changes, the order of WAL records for a given transaction or data block is maintained to ensure consistency.
+          Limitations: It applies to logical replication, not inherently to crash recovery on physical standby servers, which usually runs single-threaded.
+          Implementation:
+          To activate this, you must configure the subscription on the subscriber side to handle streaming in parallel, allowing for multiple workers to pick up and apply the incoming logical changes to the database
 - **Route reads to primary** for affected tables during bulk window via feature flag.
 - **Monitor `pg_last_wal_receive_lsn() - pg_last_wal_replay_lsn()`**; alert at > 1 GB behind.
 - **Hot standby feedback off during bulk** (otherwise primary bloats too).
@@ -338,7 +340,8 @@ These are the failure modes you will hit at MAANG scale — design for them up f
 - **Read-your-writes consistency**: after a write, pin that session to primary for `replica_lag + safety_margin` seconds.
   - **LSN tracking**: on write, record LSN in session; on read, require replica.lsn ≥ session.lsn or fall back to primary.
             ```
-            LSN (Log Sequence Number) tracking is a technique used in PostgreSQL to achieve read-your-writes consistency while utilizing asynchronous read replicas. It ensures that a user does not experience "data vanishing" after an update due to replication lag. 
+            LSN (Log Sequence Number) tracking is a technique used in PostgreSQL to achieve read-your-writes consistency while utilizing 
+            asynchronous read replicas. It ensures that a user does not experience "data vanishing" after an update due to replication lag. 
             
             Core Mechanism Components
             Write Log Sequence Number (LSN): A 64-bit integer acting as a unique, monotonically increasing identifier for a write operation in the Write-Ahead Log (WAL).
@@ -370,15 +373,18 @@ These are the failure modes you will hit at MAANG scale — design for them up f
 
 ### 7.7 Long-running transaction blocks vacuum globally
 
-**Scenario**: An analyst runs `SELECT ...` for 4 hours on a replica with `hot_standby_feedback=on`. Primary can't vacuum anything newer than the oldest xmin on that replica → fleet-wide bloat.
+**Scenario**: An analyst runs `SELECT ...` for 4 hours on a replica with `hot_standby_feedback=on`. 
+              Primary can't vacuum anything newer than the oldest xmin on that replica → fleet-wide bloat.
 
 **Handling**:
 - **Monitor oldest xmin** per replica; alert at > 15 min.
 - **`idle_in_transaction_session_timeout`** terminates idle transactions.
 - **`statement_timeout`** per role.
   - **Separate analytical replica** with `hot_standby_feedback=off`; accept that long queries may be canceled but primary stays healthy.
-    - Setting hot_standby_feedback = off (default) allows a PostgreSQL primary server to VACUUM dead rows without waiting for standby queries, preventing primary table bloat. However, this risks "replication conflicts," where long-running queries on the standby are canceled if they try to read rows removed by the primary.
-      Key Implications of hot_standby_feedback = off:
+    - Setting hot_standby_feedback = off (default) allows a PostgreSQL primary server to VACUUM dead rows without waiting for standby queries, 
+      preventing primary table bloat. However, this risks "replication conflicts," where long-running queries on the standby are canceled if they try to read rows removed by the primary.
+      
+    - Key Implications of hot_standby_feedback = off:
       Reduced Bloat on Primary: The primary does not hold onto rows needed by the standby, keeping the database cleaner.
       Query Cancellations on Standby: Active queries on the standby may fail with "conflict with vacuum" errors if they take too long.
       Best for: Systems where primary performance is critical and standby queries are short-lived.

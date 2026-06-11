@@ -250,11 +250,11 @@ This is the most complex offline pipeline. A single video upload triggers dozens
 │  │    └────┬────┘  └────┬─────┘  └────┬─────┘                        │  │                                                                                                         
 │  │         │            │             │                               │  │                                                                                                        
 │  │         └────────────┼─────────────┘                               │  │                                                                                                        
-│  │                      ▼                                              │  │                                                                                                       
-│  │              ┌───────────────┐                                      │  │
-│  │              │  PACKAGING    │                                      │  │                                                                                                       
-│  │              │               │                                      │  │
-│  │              │ • Generate    │                                      │  │                                                                                                       
+│  │                      ▼                                             │  │                                                                                                       
+│  │              ┌───────────────┐                                     │  │
+│  │              │  PACKAGING    │                                     │  │                                                                                                       
+│  │              │               │                                     │  │
+│  │              │ • Generate    │                                     │  │                                                                                                       
 │  │              │   DASH/HLS   │                                      │  │                                                                                                        
 │  │              │   manifests  │                                      │  │
 │  │              │ • Segment    │                                      │  │                                                                                                        

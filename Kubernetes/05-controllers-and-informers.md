@@ -28,7 +28,9 @@ The single most important *programming* pattern in Kubernetes. Every k8s compone
                        │  - load object      │
                        │  - compute desired  │
                        │  - apply diff       │
-                       │  - on failure: re-queue with backoff │
+                       │  - on failure:      │
+                       │    re-queue with    │
+                       │    backoff          │
                        └─────────────────────┘
 ```
 
@@ -65,7 +67,8 @@ factory.WaitForCacheSync(ctx.Done())
 
 ### Shared informer factory
 
-Multiple controllers watching the same resource share one informer → one watch stream to apiserver, one local cache. This is critical for scale: 100 operators on a cluster all watching Pods would be 100× the watch load without shared informers.
+Multiple controllers watching the same resource share one informer → one watch stream to apiserver, one local cache. 
+This is critical for scale: 100 operators on a cluster all watching Pods would be 100× the watch load without shared informers.
 
 ### Lister
 
@@ -304,7 +307,8 @@ metadata:
     blockOwnerDeletion: true
 ```
 
-The kube-controller-manager's **garbage collector** watches owner refs. When `rs-abc` is deleted, the GC finds all objects owning it (Pods with that owner ref) and deletes them.
+The kube-controller-mana    ger's **garbage collector** watches owner refs. When `rs-abc` is deleted, the GC finds all objects owning it 
+(Pods with that owner ref) and deletes them.
 
 Three deletion modes:
 - **Foreground**: deletion blocks until dependents are gone (`metadata.finalizers: [foregroundDeletion]`).
@@ -371,7 +375,8 @@ The manager handles informer setup, work queue, leader election, metrics, health
 - **"How would you build a controller for X?"** Informer + work queue + reconcile loop; idempotent; uses status subresource; has finalizer.
 - **"What if reconcile takes 30s?"** Other items wait in queue → throughput drops. Either parallelize (more workers), break work into smaller pieces, or async (kick off work, requeue to check).
 - **"How do you handle a resource being deleted mid-reconcile?"** Get returns 404 → return nil to forget; lister will eventually catch up.
-- **"What if your controller writes back to apiserver in a tight loop?"** Watch-event → reconcile → write → watch-event → infinite loop. Mitigations: check if state already matches before writing; use a status hash to detect change; check `metadata.resourceVersion`.
+  - **"What if your controller writes back to apiserver in a tight loop?"** Watch-event → reconcile → write → watch-event → infinite loop. 
+        Mitigations: check if state already matches before writing; use a status hash to detect change; check `metadata.resourceVersion`.
 - **"How do you handle multiple controllers reconciling the same resource?"** Use SSA with separate fieldManagers; or assign owner controller (only one writes spec, others only watch).
 
 ## 5.12 Corner cases

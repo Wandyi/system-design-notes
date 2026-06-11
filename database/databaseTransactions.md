@@ -436,7 +436,7 @@ Design principle: compensations are not "undos." A charge has happened; you can'
 **Schema:**
 ```sql
 CREATE TABLE accounts (
-    id        BIGSERIAL PRIMARY KEY,
+    id        BIGSERIAL PRIMARY KEY,//use -> GENERATED ALWAYS AS IDENTITY --blocks manual inserts to the column unless explicitly overridden, which prevents the sequence from falling out of sync with table data
     balance   NUMERIC(20,4) NOT NULL CHECK (balance >= 0),
     version   BIGINT NOT NULL DEFAULT 0
 );
@@ -666,15 +666,18 @@ Written from the same trigger or application code path. Regulators, support, and
 
 If `COMMIT` has not been acknowledged, the transaction has *not* committed. Postgres will, on the next startup or on the connection dying, roll it back as part of WAL recovery. Safe. No torn writes visible.
 
-*But*: any side-effects outside the DB (external API calls, emails sent, Kafka publishes) that happened before the crash are not rolled back. This is why the outbox pattern matters — every external effect must be driven from a DB row the transaction also wrote, so it only fires after commit.
+*But*: any side-effects outside the DB (external API calls, emails sent, Kafka publishes) that happened before the crash are not rolled back. 
+This is why the outbox pattern matters — every external effect must be driven from a DB row the transaction also wrote, so it only fires after commit.
 
 ### Q10.2 — A network partition splits the primary from the application. What happens?
 
 - App-side: all in-flight transactions time out. Connections drop.
 - Primary-side: WAL retention may grow if the app was the main load, but DB keeps humming for any other clients.
-- For replicas and failover: if an automated failover (e.g., Patroni) promotes a replica while the primary is still running, you get a split brain. Fence aggressively — the old primary must self-demote or be killed before the new one accepts writes.
+- For replicas and failover: if an automated failover (e.g., Patroni) promotes a replica while the primary is still running, you get a split brain. 
+- Fence aggressively — the old primary must self-demote or be killed before the new one accepts writes.
 
-Critical for staff engineers: every DB write must tolerate at-least-once. Never trust "the app got a 200 back so it definitely committed" — build your downstream logic on idempotent consumption of DB state, not on app-side confirmations.
+Critical for staff engineers: every DB write must tolerate at-least-once. 
+Never trust "the app got a 200 back so it definitely committed" — build your downstream logic on idempotent consumption of DB state, not on app-side confirmations.
 
 ### Q10.3 — Clock skew between two nodes — when does it hurt you?
 

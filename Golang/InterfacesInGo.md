@@ -54,7 +54,8 @@ type Service struct { st blobStore }
 // can substitute a memory implementation in tests without storage's permission.
 ```
 
-Staff insight: this single inversion — **define interfaces where they're used, not where they're implemented** — eliminates ~80% of "I need to update three packages to add a method" pain. It also makes mocking trivial without exposing test-only types in production packages.
+Staff insight: this single inversion — **define interfaces where they're used, not where they're implemented** — eliminates ~80% of "I need to update three packages to add a method" pain. 
+It also makes mocking trivial without exposing test-only types in production packages.
 
 ---
 1. Accept Interfaces, Return Concrete Types

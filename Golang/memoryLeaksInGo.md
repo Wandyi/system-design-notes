@@ -270,35 +270,41 @@ resp, err := c.http.Do(req)
 Not a memory leak in the classic sense, but creates goroutines that outlive their intended scope — a logical lifecycle leak.
 
 // LEAK: goroutine's context is disconnected from caller's lifecycle
-func (s *Service) HandleRequest(ctx context.Context, req Request) error {
-go func() {
-// context.Background() never cancels — this goroutine runs forever
-// even if the original request was cancelled, timed out, or server is shutting down
-if err := s.audit(context.Background(), req); err != nil {
-log.Println(err)
-}
-}()
-return s.process(ctx, req)
-}
+
+```
+        func (s *Service) HandleRequest(ctx context.Context, req Request) error {
+        go func() {
+        // context.Background() never cancels — this goroutine runs forever
+        // even if the original request was cancelled, timed out, or server is shutting down
+        if err := s.audit(context.Background(), req); err != nil {
+        log.Println(err)
+        }
+        }()
+        return s.process(ctx, req)
+        }
+```
 
 // FIX: use a separate long-lived context for background work,
 // not Background() inline, and not the request context
-type Service struct {
-bgCtx context.Context  // set at service construction, cancelled on shutdown
-}
+```
+        type Service struct {
+        bgCtx context.Context  // set at service construction, cancelled on shutdown
+        }
+        
+        func (s *Service) HandleRequest(ctx context.Context, req Request) error {
+        go func() {
+        // Tied to service lifecycle, not request lifecycle
+        // Cancelled when the service shuts down
+        auditCtx, cancel := context.WithTimeout(s.bgCtx, 10*time.Second)
+        defer cancel()
+        if err := s.audit(auditCtx, req); err != nil {
+        log.Println(err)
+        }
+        }()
+        return s.process(ctx, req)
+        }
 
-func (s *Service) HandleRequest(ctx context.Context, req Request) error {
-go func() {
-// Tied to service lifecycle, not request lifecycle
-// Cancelled when the service shuts down
-auditCtx, cancel := context.WithTimeout(s.bgCtx, 10*time.Second)
-defer cancel()
-if err := s.audit(auditCtx, req); err != nil {
-log.Println(err)
-}
-}()
-return s.process(ctx, req)
-}
+```
 
   ---
 8. Ticker / Timer Goroutine Leaks Inside Context-Aware Functions
@@ -319,7 +325,7 @@ checkHealth(t)
 }()
 }
 
-// LEAK: time.After in a loop creates a new timer every iteration
+// LEAK: **time.After** in a loop creates a new timer every iteration
 // old timers not GC'd until they fire
 func poll(ctx context.Context) {
 for {

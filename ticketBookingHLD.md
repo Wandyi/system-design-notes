@@ -43,7 +43,7 @@
 - **Transfer & Resale**: Transfer tickets to another user; optional official resale marketplace
 
 ### Non-Functional Requirements
-
+[eventDrivenPlatform](eventDrivenPlatform)
 - **Availability**: 99.99% during the on-sale window (zero tolerance for downtime during a World Cup sale)
 - **Consistency**: **Strong consistency for seat inventory** — overselling even one seat is unacceptable
 - **Latency**: Seat availability check < 100ms, booking confirmation < 3 seconds
@@ -110,7 +110,8 @@ Payment:
   Payment gateway must handle this burst (Stripe/Braintree support 1K+/sec)
 ```
 
-**Key Insight**: This is not a throughput problem (133 bookings/sec is trivial). It's a **concurrency** problem (10M users contending for 80K unique, non-fungible seats) and a **fairness** problem (first-come-first-served under adversarial conditions with bots).
+**Key Insight**: This is not a throughput problem (133 bookings/sec is trivial). 
+It's a **concurrency** problem (10M users contending for 80K unique, non-fungible seats) and a **fairness** problem (first-come-first-served under adversarial conditions with bots).
 
 ---
 
@@ -131,7 +132,7 @@ Payment:
                     │
         ┌───────────┼───────────────┐
         │           │               │
-  ┌─────▼──────┐ ┌──▼────────┐ ┌───▼──────────┐
+  ┌─────▼──────┐ ┌──▼────────┐ ┌────▼─────────┐
   │  Virtual   │ │  Event /  │ │  Booking     │
   │  Queue     │ │  Catalog  │ │  Service     │
   │  Service   │ │  Service  │ │              │
@@ -152,10 +153,10 @@ Payment:
   │                 Event Bus (Kafka)              │
   └──┬─────────┬──────────┬──────────┬─────────────┘
      │         │          │          │
-┌────▼───┐ ┌──▼─────┐ ┌──▼────┐ ┌───▼──────────┐
-│Payment │ │Notif.  │ │Ticket │ │ Analytics /  │
-│Service │ │Service │ │Delivery│ │ Fraud Engine│
-└────────┘ └────────┘ └───────┘ └──────────────┘
+┌────▼───┐ ┌──▼─────┐ ┌───▼────┐ ┌───▼──────────┐
+│Payment │ │Notif.  │ │Ticket  │ │ Analytics /  │
+│Service │ │Service │ │Delivery│ │ Fraud Engine │
+└────────┘ └────────┘ └────────┘ └──────────────┘
                          │
               ┌──────────▼───────────┐
               │   Database Layer     │
@@ -891,13 +892,13 @@ Idempotency key format: {booking_id}_{operation}_{version}
 
 ```
 ┌──────────┐  hold acquired  ┌──────────────────┐  payment auth  ┌───────────────────┐
-│  (start) │────────────────→│  HOLD_ACQUIRED   │──────────────→│ PAYMENT_AUTHORIZED │
-└──────────┘                 └────────┬─────────┘               └─────────┬─────────┘
-                                      │                                   │
+│  (start) │────────────────→│  HOLD_ACQUIRED   │──────────────→ │ PAYMENT_AUTHORIZED│
+└──────────┘                 └────────┬─────────┘                └─────────┬─────────┘
+                                      │                                    │
                                hold expires /                       seats confirmed
                                user cancels                        + payment captured
-                                      │                                   │
-                                      ▼                                   ▼
+                                      │                                    │
+                                      ▼                                    ▼
                              ┌─────────────────┐                  ┌────────────────┐
                              │    CANCELLED    │                  │   CONFIRMED    │
                              └─────────────────┘                  └───────┬────────┘
@@ -1108,8 +1109,8 @@ Production approach: Per-event database isolation for mega-events.
                     │  event_id → database        │
                     └──────────┬──────────────────┘
                                │
-              ┌────────────────┼────────────────┐
-              │                │                │
+              ┌────────────────┼───────────────┐
+              │                │               │
     ┌─────────▼──────┐ ┌──────▼────────┐ ┌─────▼───────────┐
     │  Mega-Event DB │ │  Normal Pool  │ │  Mega-Event DB  │
     │  (World Cup    │ │  (all other   │ │  (Super Bowl    │
@@ -1145,10 +1146,10 @@ so moving one partition to a dedicated server is straightforward:
   │          Mega-Event DB (World Cup)       │
   │                                          │
   │   Primary (us-east-1a)                   │
-  │     ├── Sync Standby (us-east-1b)   HA  │
-  │     ├── Read Replica 1 (us-east-1c) ←── │ seat map reads
-  │     ├── Read Replica 2 (us-east-1c) ←── │ seat map reads
-  │     └── Async Replica (eu-west-1a)  DR  │
+  │     ├── Sync Standby (us-east-1b)   HA   │
+  │     ├── Read Replica 1 (us-east-1c) ←──  │ seat map reads
+  │     ├── Read Replica 2 (us-east-1c) ←──  │ seat map reads
+  │     └── Async Replica (eu-west-1a)  DR   │
   │                                          │
   │   Writes: ~2K/sec (holds + confirmations)│
   │   Reads: ~200K/sec (seat availability)   │
@@ -1473,19 +1474,19 @@ Solution: Client-generated idempotency key.
 │  ├─ Attempts/sec:       142     ├─ Auth rate:       142/sec        │
 │  ├─ Success rate:       94.2%   ├─ Capture rate:    133/sec        │
 │  ├─ Avg booking time:   2.8s    ├─ Decline rate:    3.1%           │
-│  ├─ Hold expire rate:   4.1%    ├─ Gateway latency: p50: 450ms    │
-│  └─ Conflict rate:      12.3%   └─                  p99: 1.2s     │
-│                                                                     │
-│  INFRASTRUCTURE                  ALERTS                             │
-│  ├─ CDN QPS:        412K/sec    ├─ ✓ All systems nominal            │
+│  ├─ Hold expire rate:   4.1%    ├─ Gateway latency: p50: 450ms     │
+│  └─ Conflict rate:      12.3%   └─                  p99: 1.2s      │
+│                                                                    │
+│  INFRASTRUCTURE                  ALERTS                            │
+│  ├─ CDN QPS:        412K/sec    ├─ ✓ All systems nominal           │
 │  ├─ API GW QPS:      12K/sec    ├─ ⚠ Hold expire rate above 4%     │
 │  ├─ Redis ops/sec:   85K/sec    │   (extending hold timer to 8min) │
 │  ├─ DB writes/sec:    1.8K     └─                                  │
 │  ├─ DB read (replica): 2.1K                                        │
 │  ├─ Kafka lag:          124 msgs                                   │
 │  └─ Pod count:          booking: 20, queue: 8, inventory: 6        │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 ---

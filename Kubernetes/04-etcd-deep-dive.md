@@ -1,7 +1,8 @@
 # 04 · etcd Deep Dive
 
-The single point of consistency for the cluster. Every other component is stateless; etcd is the source of truth. Staff candidates should know its Raft model, watch protocol, scaling limits, and the ops procedures (compaction, defrag, backup).
-
+The single point of consistency for the cluster. Every other component is stateless; etcd is the source of truth. 
+Staff candidates should know its Raft model, watch protocol, scaling limits, and the ops procedures (compaction, defrag, backup).
+'
 ## 4.1 The big picture
 
 ```

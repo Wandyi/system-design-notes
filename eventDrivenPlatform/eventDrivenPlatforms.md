@@ -54,6 +54,7 @@ When You Don't Need It
 
 Setup: A site like Amazon where Header, ProductCatalog, Cart, and Checkout are independently deployed micro-frontends.
 
+```
 Global Bus
 ├── Header MFE Bus
 ├── Catalog MFE Bus
@@ -61,6 +62,7 @@ Global Bus
 │   └── Filters Component Bus
 ├── Cart MFE Bus
 └── Checkout MFE Bus
+```
 
 Flow:
 - User clicks "Add to Cart" inside ProductCard → fires item.selected on Catalog MFE Bus
@@ -76,13 +78,15 @@ noise constantly.
 
 Setup: Multiple users editing a doc with nested blocks (page → section → block).
 
-App Bus (global)
-├── Document Bus
-│   ├── Section-1 Bus
-│   │   ├── Block-A Bus
-│   │   └── Block-B Bus
-│   └── Section-2 Bus
-└── Presence Bus (who's online)
+```
+        App Bus (global)
+        ├── Document Bus
+        │   ├── Section-1 Bus
+        │   │   ├── Block-A Bus
+        │   │   └── Block-B Bus
+        │   └── Section-2 Bus
+        └── Presence Bus (who's online)
+```
 
 Flow:
 - User types in Block-A → keystroke fires on Block-A Bus (very high frequency)
@@ -119,13 +123,16 @@ and a security risk.
 
 Setup: A dashboard managing thousands of devices grouped by factory → floor → device.
 
-Global App Bus
-├── Factory-1 Bus
-│   ├── Floor-1 Bus
-│   │   ├── Device-101 Bus
-│   │   └── Device-102 Bus
-│   └── Floor-2 Bus
-├── Factory-2 Bus
+```
+        Global App Bus
+        ├── Factory-1 Bus
+        │   ├── Floor-1 Bus
+        │   │   ├── Device-101 Bus
+        │   │   └── Device-102 Bus
+        │   └── Floor-2 Bus
+        ├── Factory-2 Bus
+
+```
 
 Flow:
 - Device-101 sends a temperature reading every 500ms → fires on Device-101 Bus
@@ -140,13 +147,16 @@ Why not flat? 1000 devices × 2 events/sec = 2000 events/sec on one bus. Most of
 
 Setup: A game with scenes containing game objects with components.
 
-Game Bus (global)
-├── Scene Bus
-│   ├── Player GameObject Bus
-│   │   ├── HealthComponent Bus
-│   │   └── InventoryComponent Bus
-│   └── Enemy-1 GameObject Bus
-└── UI Bus
+```
+    Game Bus (global)
+    ├── Scene Bus
+    │   ├── Player GameObject Bus
+    │   │   ├── HealthComponent Bus
+    │   │   └── InventoryComponent Bus
+    │   └── Enemy-1 GameObject Bus
+    └── UI Bus
+
+```
 
 Flow:
 - Player takes damage → damage.received fires on HealthComponent Bus
@@ -163,14 +173,16 @@ damage tick.
 
 Setup: Monitoring runs with jobs containing steps.
 
-App Bus
-├── Pipeline-Run-#123 Bus
-│   ├── Build-Job Bus
-│   │   ├── Step-1 Bus (checkout)
-│   │   └── Step-2 Bus (compile)
-│   └── Test-Job Bus
-│       ├── Step-1 Bus (unit tests)
-│       └── Step-2 Bus (integration tests)
+```
+    App Bus
+    ├── Pipeline-Run-#123 Bus
+    │   ├── Build-Job Bus
+    │   │   ├── Step-1 Bus (checkout)
+    │   │   └── Step-2 Bus (compile)
+    │   └── Test-Job Bus
+    │       ├── Step-1 Bus (unit tests)
+    │       └── Step-2 Bus (integration tests)
+```
 
 Flow:
 - Step-2 (compile) emits log.line 500 times on Step-2 Bus — only the log viewer for that step listens
@@ -198,7 +210,7 @@ SQS         → managed queue, fire-and-forget, ops-free
 Kafka       → distributed log, high-throughput, ecosystem king
 Redpanda    → Kafka but simpler to operate, lower latency
 JetStream   → lightweight, edge/embedded, multi-pattern
-Pulsar       → multi-tenant, geo-distributed, tiered storage
+Pulsar      → multi-tenant, geo-distributed, tiered storage
 
   ---
 Deep Dive by System

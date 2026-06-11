@@ -41,7 +41,8 @@ Running Postgres or Kafka on Kubernetes. One node failure must not lose data or 
 
 ### Reliability — the non-obvious parts
 - **Use an operator** (Strimzi for Kafka, CloudNativePG for Postgres, ECK for Elasticsearch). Raw StatefulSets don't understand leader election, failover, or backup semantics.
-- **Don't share etcd with stateful workloads** — heavy clients (watch-heavy controllers) can starve etcd. Stateful platforms usually ship their own consensus (Raft in etcd-for-Kafka, Zookeeper→KRaft, Patroni for PG).
+- **Don't share etcd with stateful workloads** — heavy clients (watch-heavy controllers) can starve etcd. 
+  Stateful platforms usually ship their own consensus (Raft in etcd-for-Kafka, Zookeeper→KRaft, Patroni for PG).
 - **Backups live outside the cluster** — Velero for resources, native tools (pg_basebackup, Kafka MirrorMaker2) for data. A cluster losing etcd can rebuild apps but not data.
 
 ### Traps
@@ -74,7 +75,8 @@ Edge-facing API serving 50K RPS, P99 SLO 100 ms. Zero-downtime deploys; graceful
 - **Rate limiting upstream** (ingress / API gateway), not just autoscaling. Autoscale has a lag; rate limit has none.
 
 ### Traps
-- **CPU throttling**: setting `limits.cpu` below what the app actually needs causes CFS throttling at the 100ms quota boundary — latency spikes invisible to CPU% metrics. Either remove CPU limits on latency-sensitive services or set them well above P99 usage. (Memory limits, by contrast, always set — OOMKill is cleaner than swap/leak.)
+- **CPU throttling**: setting `limits.cpu` below what the app actually needs causes CFS throttling at the 100ms quota boundary — latency spikes invisible to CPU% metrics. 
+  - Either remove CPU limits on latency-sensitive services or set them well above P99 usage. (Memory limits, by contrast, always set — OOMKill is cleaner than swap/leak.)
 - **SO_REUSEPORT across pods isn't a thing**. Two pods don't share a port; Service does the load balancing — understand your kube-proxy mode (iptables vs IPVS vs eBPF/Cilium).
 
 ---

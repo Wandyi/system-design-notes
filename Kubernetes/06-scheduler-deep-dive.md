@@ -300,7 +300,8 @@ Multiple schedulers coexist (each handles pods with matching `schedulerName`).
 
 ## 6.13 Scheduler extender (legacy)
 
-Pre-framework mechanism: the scheduler calls an external HTTP service to extend Filter/Score/Bind. Slow (network hop per pod) and limited. Mostly superseded by framework plugins.
+Pre-framework mechanism: the scheduler calls an external HTTP service to extend Filter/Score/Bind. Slow (network hop per pod) and limited. 
+Mostly superseded by framework plugins.
 
 ## 6.14 Scheduling latency at scale
 

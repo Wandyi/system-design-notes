@@ -60,7 +60,8 @@ Each authenticator runs in order. First one to return a verdict wins. `UserInfo`
 
 ### Common gotchas
 
-- **Service account tokens**: pre-1.20 were stored in a Secret of type `kubernetes.io/service-account-token`; 1.21+ are projected (audience-scoped, short-lived, mounted as projected volume). The `Secret` approach still works but is deprecated.
+- **Service account tokens**: pre-1.20 were stored in a Secret of type `kubernetes.io/service-account-token`; 
+  -     1.21+ are projected (audience-scoped, short-lived, mounted as projected volume). The `Secret` approach still works but is deprecated.
 - **OIDC token lifetime**: must be re-validated on every request (apiserver doesn't cache). Slow OIDC = slow apiserver.
 - **Webhook TokenReview**: cache size and TTL matter. Misconfig = every request hits external authenticator.
 
