@@ -92,8 +92,8 @@ list of all edge cases sceanrios that arise in distributed systems across indust
 - Compacted topic key collision: Two logically different entities hash to the same key in a compacted topic. Compaction retains only the latest — the other entity's event is silently
   deleted.
 - Dead letter queue overflow: DLQ accumulates unprocessable messages. No one monitors it. Eventually it becomes a source of data loss, compliance violations, or storage exhaustion.
-- Message ordering vs. retry: A message fails and is retried later. Meanwhile, subsequent messages for the same key are processed. The retry succeeds and overwrites the newer state with
-  old state.
+  - Message ordering vs. retry: A message fails and is retried later. Meanwhile, subsequent messages for the same key are processed. The retry succeeds and overwrites the newer state with
+    old state.
 
 7. Caching
 

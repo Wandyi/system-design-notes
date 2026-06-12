@@ -130,15 +130,15 @@ Bandwidth:
                     │             │       └─────┬──────┘      │
          ┌──────────┤             │             │             │
          │          │             │             │             │
-   ┌─────▼──────┐   │      ┌──────▼─────┐ ┌────▼──────┐      │
-   │   Media    │   │      │  Feed      │ │  Graph    │      │
-   │ Processing │   │      │  Cache     │ │  Cache    │      │
-   │  Pipeline  │   │      │  (Redis)   │ │ (Redis)   │      │
-   └─────┬──────┘   │      └──────┬─────┘ └────┬──────┘      │
-         │          │             │            │             │
+   ┌─────▼──────┐   │      ┌──────▼─────┐ ┌────▼──────┐       │
+   │   Media    │   │      │  Feed      │ │  Graph    │       │
+   │ Processing │   │      │  Cache     │ │  Cache    │       │
+   │  Pipeline  │   │      │  (Redis)   │ │ (Redis)   │       │
+   └─────┬──────┘   │      └──────┬─────┘ └────┬──────┘       │
+         │          │             │            │              │
    ┌─────▼──────┐   │      ┌──────▼─────────────▼──────┐      │
-   │  Object    │   │      │       PostgreSQL /         │      │
-   │  Storage   │   │      │       Cassandra /          │◄─────┘
+   │  Object    │   │      │       PostgreSQL /         │     │
+   │  Storage   │   │      │       Cassandra /          │◄────┘
    │  (S3)      │   │      │       DynamoDB Clusters    │
    └────────────┘   │      └───────────────────────────┘
                     │
@@ -719,8 +719,8 @@ Timeline:
 
 ```
 Raw candidate pool (500 posts from fan-out + celebrity pull)
-  │
-  ▼
+                    │
+                    ▼
 ┌──────────────────────────────────────┐
 │        Feature Extraction            │
 │                                      │
